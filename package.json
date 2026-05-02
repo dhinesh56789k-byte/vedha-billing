@@ -1,0 +1,23 @@
+{
+  "name": "pos-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "POS system with React, Express, PostgreSQL, Electron, and Capacitor-ready frontend.",
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend && npm install --prefix electron",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:desktop": "npm run dev --prefix electron",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:windows": "npm run build:frontend && npm run dist:win --prefix electron",
+    "android:copy": "npm run build:frontend && npm run cap:copy --prefix frontend",
+    "android:open": "npm run cap:open --prefix frontend",
+    "start:backend": "npm start --prefix backend",
+    "start:desktop": "npm start --prefix electron"
+  },
+  "workspaces": [
+    "backend",
+    "frontend",
+    "electron"
+  ]
+}

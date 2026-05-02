@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+*.log
+backend/database.sqlite
+backend/database.sqlite-*
+.env
+.env.local
+frontend/android/
