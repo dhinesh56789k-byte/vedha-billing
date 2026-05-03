@@ -316,7 +316,7 @@ app.patch("/products/:id", auth(), async (req, res, next) => {
 app.get("/low-stock", auth(), async (req, res, next) => {
   try {
     const products = await all(
-      "SELECT * FROM products WHERE active = TRUE AND stock <= low_stock_threshold ORDER BY stock ASC, name ASC"
+      "SELECT * FROM products WHERE active = TRUE AND low_stock_threshold > 0 AND stock <= low_stock_threshold ORDER BY stock ASC, name ASC"
     );
     res.json(products);
   } catch (error) {
@@ -429,6 +429,15 @@ app.get("/sales/:id", auth(), async (req, res, next) => {
 
     sale.items = await all("SELECT * FROM sale_items WHERE sale_id = $1", [req.params.id]);
     res.json(sale);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/sales/:id", auth(["admin"]), async (req, res, next) => {
+  try {
+    await run("DELETE FROM sales WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
   } catch (error) {
     next(error);
   }
@@ -631,7 +640,7 @@ app.get("/dashboard", auth(), async (req, res, next) => {
     }
 
     const lowStock = await all(
-      "SELECT * FROM products WHERE active = TRUE AND stock <= low_stock_threshold ORDER BY stock ASC LIMIT 8"
+      "SELECT * FROM products WHERE active = TRUE AND low_stock_threshold > 0 AND stock <= low_stock_threshold ORDER BY stock ASC LIMIT 8"
     );
 
     res.json({ summary, paymentSplit, dailySales, lowStock });

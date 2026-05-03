@@ -382,7 +382,7 @@ export default function POS({ session, onLogout }) {
         ) : null}
         {activeView === "categories" ? <CategoriesAdmin reload={loadData} setMessage={setMessage} isAdmin={isAdmin} /> : null}
         {activeView === "staff" && isAdmin ? <StaffAdmin setMessage={setMessage} /> : null}
-        {activeView === "customers" ? <Customers onReprint={reprintSale} onViewPng={viewBillAsPng} paper={paper} /> : null}
+        {activeView === "customers" ? <Customers onReprint={reprintSale} onViewPng={viewBillAsPng} paper={paper} isAdmin={isAdmin} /> : null}
         {activeView === "reports" ? <Reports /> : null}
         {activeView === "expenses" && isAdmin ? <Expenses setMessage={setMessage} isAdmin={isAdmin} /> : null}
         {activeView === "alerts" ? <AlertsPage products={products} /> : null}
@@ -714,17 +714,33 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
   const [form, setForm] = useState(blank);
   const [editingId, setEditingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCatId, setSelectedCatId] = useState(null);
 
-  const filteredAdminProducts = products.filter((p) => {
-    if (!p.active) return false;
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      (p.name || "").toLowerCase().includes(q) ||
-      (p.category_name || "").toLowerCase().includes(q) ||
-      (p.location || "").toLowerCase().includes(q)
-    );
-  });
+  const filteredAdminProducts = useMemo(() => {
+    return [...products]
+      .filter((p) => {
+        if (!p.active) return false;
+        // Category Filter
+        if (selectedCatId && p.category_id !== selectedCatId) return false;
+        // Search Filter
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          (p.name || "").toLowerCase().includes(q) ||
+          (p.category_name || "").toLowerCase().includes(q) ||
+          (p.location || "").toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => {
+        // 1. No price items to the top
+        const pA = Number(a.price) || 0;
+        const pB = Number(b.price) || 0;
+        if (pA === 0 && pB !== 0) return -1;
+        if (pB === 0 && pA !== 0) return 1;
+        // 2. Alphabetical secondary sort
+        return (a.name || "").localeCompare(b.name || "");
+      });
+  }, [products, searchQuery]);
 
   function edit(product) {
     setEditingId(product.id);
@@ -775,8 +791,47 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
   }
 
   return (
-    <section className="admin-layout">
-      <form className="content-panel form-grid" onSubmit={save}>
+    <section className="admin-layout catalog-two-column" style={{ height: "calc(100vh - 120px)" }}>
+      <aside className="catalog-categories">
+        <div className="category-sidebar-header">
+          <Tags size={16} /> Filter by Category
+        </div>
+        <div 
+          className={`category-item ${selectedCatId === null ? "active" : ""}`}
+          onClick={() => setSelectedCatId(null)}
+        >
+          All Categories
+        </div>
+        {parents.map(p => {
+          const kids = categories.filter(c => c.parent_id === p.id);
+          return (
+            <div key={p.id}>
+              <div 
+                className={`category-item ${selectedCatId === p.id ? "active" : ""}`}
+                onClick={() => setSelectedCatId(p.id)}
+              >
+                {p.name}
+              </div>
+              {kids.length > 0 && (
+                <div style={{ marginLeft: "12px", borderLeft: "1px solid #334155" }}>
+                  {kids.map(k => (
+                    <div 
+                      key={k.id} 
+                      className={`category-item sub-item ${selectedCatId === k.id ? "active" : ""}`}
+                      onClick={() => setSelectedCatId(k.id)}
+                    >
+                      {k.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </aside>
+
+      <div className="catalog-main" style={{ padding: "20px" }}>
+        <form className="content-panel form-grid" onSubmit={save} style={{ marginBottom: "20px" }}>
         <input placeholder="Product name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         {/* Grouped category select: parents with children shown as groups */}
         <select value={form.category_id || ""} onChange={(e) => setForm({ ...form, category_id: Number(e.target.value) || null })}>
@@ -826,6 +881,7 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
           </span>
         ])}
       />
+      </div>
     </section>
   );
 }
@@ -852,7 +908,8 @@ function WhatsAppAlerts({ products }) {
     catch { return []; }
   });
   const [newNumber, setNewNumber] = useState("");
-  const lowStock = products.filter(p => p.active !== false && p.stock >= 0 && p.stock <= p.low_stock_threshold);
+  const lowStock = products.filter(p => p.active !== false && p.stock >= 0 && p.low_stock_threshold > 0 && p.stock <= p.low_stock_threshold);
+
 
   function saveNumbers(updated) {
     setNumbers(updated);
@@ -1174,7 +1231,7 @@ function CategoriesAdmin({ reload, setMessage, isAdmin }) {
 }
 
 
-function Customers({ onReprint, onViewPng, paper }) {
+function Customers({ onReprint, onViewPng, paper, isAdmin }) {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
   const [history, setHistory] = useState([]);
@@ -1215,6 +1272,17 @@ function Customers({ onReprint, onViewPng, paper }) {
       await onViewPng(saleId);
     } finally {
       setViewingPng(null);
+    }
+  }
+
+  async function removeSale(saleId) {
+    if (!confirm("Are you sure you want to PERMANENTLY delete this bill? This cannot be undone.")) return;
+    try {
+      await api.delete(`/sales/${saleId}`);
+      setHistory(prev => prev.filter(s => s.id !== saleId));
+      loadCustomers(); // Refresh totals
+    } catch (e) {
+      alert("Could not delete sale.");
     }
   }
 
@@ -1305,6 +1373,16 @@ function Customers({ onReprint, onViewPng, paper }) {
                     <Image size={13} />
                     {viewingPng === sale.id ? "Loading…" : "View as PNG"}
                   </button>
+                  {isAdmin && (
+                    <button
+                      className="cat-delete-btn"
+                      style={{ padding: "4px 12px", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)" }}
+                      onClick={() => removeSale(sale.id)}
+                      title="Delete Sale"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
               <span style={{color:"#64748b",fontSize:"12px"}}>{formatDateTime(sale.created_at)} · {sale.payment_method}</span>
