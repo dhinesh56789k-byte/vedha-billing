@@ -129,6 +129,11 @@ async function initDb() {
     line_total NUMERIC(12,2) NOT NULL
   )`);
 
+  await ensureColumn("sale_items", "description", "TEXT");
+  await ensureColumn("sale_items", "cgst", "NUMERIC(5,2)");
+  await ensureColumn("sale_items", "sgst", "NUMERIC(5,2)");
+  await ensureColumn("sale_items", "discount", "NUMERIC(12,2)");
+
   await run(`CREATE TABLE IF NOT EXISTS expenses (
     id SERIAL PRIMARY KEY,
     description TEXT NOT NULL,

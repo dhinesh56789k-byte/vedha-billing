@@ -357,8 +357,12 @@ app.post("/sales", auth(), async (req, res, next) => {
           product_id: product.id,
           name: product.name,
           qty,
-          price: effectivePrice,
-          line_total: effectivePrice * qty
+          price: Number(product.price), // Save original base price
+          line_total: effectivePrice * qty,
+          description: item.description || null,
+          cgst: item.cgst !== undefined ? item.cgst : null,
+          sgst: item.sgst !== undefined ? item.sgst : null,
+          discount: discount
         });
       }
 
@@ -393,9 +397,9 @@ app.post("/sales", auth(), async (req, res, next) => {
 
       for (const item of saleItems) {
         await tx.run(
-          `INSERT INTO sale_items (sale_id, product_id, name, qty, price, line_total)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [saleResult.lastID, item.product_id, item.name, item.qty, item.price, item.line_total]
+          `INSERT INTO sale_items (sale_id, product_id, name, qty, price, line_total, description, cgst, sgst, discount)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [saleResult.lastID, item.product_id, item.name, item.qty, item.price, item.line_total, item.description, item.cgst, item.sgst, item.discount]
         );
         await tx.run("UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2", [
           item.qty,
@@ -437,6 +441,16 @@ app.get("/sales/:id", auth(), async (req, res, next) => {
 app.delete("/sales/:id", auth(["admin"]), async (req, res, next) => {
   try {
     await run("DELETE FROM sales WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/customers/:phone", auth(["admin"]), async (req, res, next) => {
+  try {
+    const phone = req.params.phone === "-" ? "" : req.params.phone;
+    await run("DELETE FROM sales WHERE COALESCE(phone, '') = $1", [phone]);
     res.json({ success: true });
   } catch (error) {
     next(error);

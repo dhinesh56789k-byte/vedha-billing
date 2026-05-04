@@ -599,12 +599,13 @@ function BillingView(props) {
                     value={item.discount || ""}
                     onChange={(e) => props.updateItemField(item.product_id, "discount", Number(e.target.value) || 0)}
                   />
-                  <input
+                  <textarea
                     className="cart-extra-input"
-                    type="text"
-                    placeholder="Description"
+                    placeholder="Description (Press Enter for next line)"
                     value={item.description || ""}
                     onChange={(e) => props.updateItemField(item.product_id, "description", e.target.value)}
+                    rows={1}
+                    style={{ resize: "vertical", minHeight: "32px", fontFamily: "inherit" }}
                   />
                   <input
                     className="cart-extra-input"
@@ -791,47 +792,8 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
   }
 
   return (
-    <section className="admin-layout catalog-two-column" style={{ height: "calc(100vh - 120px)" }}>
-      <aside className="catalog-categories">
-        <div className="category-sidebar-header">
-          <Tags size={16} /> Filter by Category
-        </div>
-        <div 
-          className={`category-item ${selectedCatId === null ? "active" : ""}`}
-          onClick={() => setSelectedCatId(null)}
-        >
-          All Categories
-        </div>
-        {parents.map(p => {
-          const kids = categories.filter(c => c.parent_id === p.id);
-          return (
-            <div key={p.id}>
-              <div 
-                className={`category-item ${selectedCatId === p.id ? "active" : ""}`}
-                onClick={() => setSelectedCatId(p.id)}
-              >
-                {p.name}
-              </div>
-              {kids.length > 0 && (
-                <div style={{ marginLeft: "12px", borderLeft: "1px solid #334155" }}>
-                  {kids.map(k => (
-                    <div 
-                      key={k.id} 
-                      className={`category-item sub-item ${selectedCatId === k.id ? "active" : ""}`}
-                      onClick={() => setSelectedCatId(k.id)}
-                    >
-                      {k.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </aside>
-
-      <div className="catalog-main" style={{ padding: "20px" }}>
-        <form className="content-panel form-grid" onSubmit={save} style={{ marginBottom: "20px" }}>
+    <section className="admin-layout">
+      <form className="content-panel form-grid" onSubmit={save}>
         <input placeholder="Product name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         {/* Grouped category select: parents with children shown as groups */}
         <select value={form.category_id || ""} onChange={(e) => setForm({ ...form, category_id: Number(e.target.value) || null })}>
@@ -881,7 +843,6 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
           </span>
         ])}
       />
-      </div>
     </section>
   );
 }
@@ -1286,6 +1247,24 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
     }
   }
 
+  async function removeCustomer(phone) {
+    const msg = phone === "-" 
+      ? "Delete ALL 'Walk-in' customer history? This will remove all bills without a phone number."
+      : `Delete all history for customer with phone: ${phone}?`;
+    
+    if (!confirm(msg)) return;
+    try {
+      await api.delete(`/customers/${encodeURIComponent(phone)}`);
+      if (selectedCustomer && selectedCustomer.phone === phone) {
+        setSelectedCustomer(null);
+        setHistory([]);
+      }
+      loadCustomers();
+    } catch (e) {
+      alert("Could not delete customer history.");
+    }
+  }
+
   function formatDateTime(iso) {
     if (!iso) return "-";
     return new Date(iso).toLocaleString("en-IN", {
@@ -1304,13 +1283,23 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
           <button onClick={loadCustomers}>Search</button>
         </div>
         <DataTable
-          columns={["Customer", "Phone", "Visits", "Spend", "Last Visit"]}
+          columns={["Customer", "Phone", "Visits", "Spend", "Last Visit", "Actions"]}
           rows={customers.map((c) => [
             <button className="link-button" onClick={() => openHistory(c)} key={c.phone}>{c.customer}</button>,
             c.phone,
             c.visits,
             currency.format(c.spend),
-            formatDateTime(c.last_visit)
+            formatDateTime(c.last_visit),
+            isAdmin ? (
+              <button 
+                className="cat-delete-btn" 
+                style={{color:"#ef4444"}} 
+                onClick={() => removeCustomer(c.phone)}
+                title="Delete ALL history for this customer"
+              >
+                <Trash2 size={14} />
+              </button>
+            ) : "—"
           ])}
         />
       </div>
@@ -2048,7 +2037,7 @@ function Receipt({ receipt, paper }) {
                    <tr key={item.product_id + "-" + idx}>
                      <td style={{padding: "8px", textAlign: "left", border: "1px solid #000", width: "36%", verticalAlign: "top"}}>
                        <div>{item.name}</div>
-                       {item.description && <div style={{fontSize:"11px", color:"#555", marginTop:"3px", fontStyle:"italic"}}>{item.description}</div>}
+                       {item.description && <div style={{fontSize:"11px", color:"#555", marginTop:"3px", fontStyle:"italic", whiteSpace:"pre-wrap"}}>{item.description}</div>}
                      </td>
                      <td style={{padding: "8px", border: "1px solid #000", textAlign: "center", width: "12%", verticalAlign: "top"}}>{cgst > 0 ? currency.format(cgst) : ""}</td>
                      <td style={{padding: "8px", border: "1px solid #000", textAlign: "center", width: "12%", verticalAlign: "top"}}>{sgst > 0 ? currency.format(sgst) : ""}</td>
