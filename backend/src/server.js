@@ -389,10 +389,10 @@ app.post("/sales", auth(), async (req, res, next) => {
       const bill_number = String(nextNum).padStart(3, '0');
 
       const saleResult = await tx.run(
-        `INSERT INTO sales (bill_number, customer, phone, address, gst_number, subtotal, tax, total, payment_method, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `INSERT INTO sales (bill_number, customer, phone, address, gst_number, subtotal, tax, total, payment_method, tax_mode, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING id, bill_number`,
-        [bill_number, customer.trim(), phone.trim(), address.trim(), gstNumber.trim(), subtotal, tax, total, payment_method, req.user.id]
+        [bill_number, customer.trim(), phone.trim(), address.trim(), gstNumber.trim(), subtotal, tax, total, payment_method, req.body.tax_mode || 'no-tax', req.user.id]
       );
 
       for (const item of saleItems) {
@@ -484,7 +484,7 @@ app.get("/customers", auth(), async (req, res, next) => {
 app.get("/customers/:phone/history", auth(), async (req, res, next) => {
   try {
     const sales = await all(
-      `SELECT id, bill_number, customer, phone, subtotal, tax, total, payment_method, created_at
+      `SELECT id, bill_number, customer, phone, subtotal, tax, total, payment_method, tax_mode, created_at
        FROM sales
        WHERE phone = $1 AND created_at >= NOW() - INTERVAL '1 year'
        ORDER BY created_at DESC`,

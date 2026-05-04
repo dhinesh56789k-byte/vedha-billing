@@ -64,15 +64,7 @@ function createWindow() {
     };
   });
 
-  const packagedFrontend = path.join(__dirname, "frontend-dist", "index.html");
-  const workspaceFrontend = path.join(__dirname, "..", "frontend", "dist", "index.html");
-  const builtFrontend = fs.existsSync(packagedFrontend) ? packagedFrontend : workspaceFrontend;
-
-  if (process.env.ELECTRON_START_URL || !fs.existsSync(builtFrontend)) {
-    win.loadURL(devUrl);
-  } else {
-    win.loadFile(builtFrontend);
-  }
+  win.loadURL("https://vedha-billing-frontend.vercel.app/");
 }
 
 app.whenReady().then(() => {

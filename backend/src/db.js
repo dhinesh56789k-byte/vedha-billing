@@ -148,6 +148,7 @@ async function initDb() {
   await ensureColumn("products", "active", "BOOLEAN NOT NULL DEFAULT TRUE");
   await ensureColumn("products", "location", "TEXT NOT NULL DEFAULT ''");
   await ensureColumn("sales", "bill_number", "TEXT");
+  await ensureColumn("sales", "tax_mode", "TEXT NOT NULL DEFAULT 'exclusive'");
 
   const existingAdmin = await get("SELECT id FROM users WHERE username = $1", ["admin"]);
   if (!existingAdmin) {

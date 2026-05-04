@@ -1374,7 +1374,10 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
                   )}
                 </div>
               </div>
-              <span style={{color:"#64748b",fontSize:"12px"}}>{formatDateTime(sale.created_at)} · {sale.payment_method}</span>
+              <span style={{color:"#64748b",fontSize:"12px"}}>
+                {formatDateTime(sale.created_at)} · {sale.payment_method}
+                {sale.tax_mode && ` · ${sale.tax_mode.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())} Bill`}
+              </span>
               <div style={{marginTop:"6px",display:"flex",flexWrap:"wrap",gap:"4px"}}>
                 {sale.items.map((item) => (
                   <span key={`${sale.id}-${item.name}`} style={{
