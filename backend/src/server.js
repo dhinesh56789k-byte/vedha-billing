@@ -795,8 +795,6 @@ async function sendExcel(res, report) {
     const products = (s.items || []).map(it => {
       let line = `${it.name} x${it.qty} @ Rs.${Number(it.price).toFixed(2)}`;
       let ex = [];
-      if (it.description) ex.push(`Desc: ${it.description}`);
-      if (it.discount > 0) ex.push(`Disc: Rs.${it.discount}`);
       if (it.cgst > 0) ex.push(`CGST:${it.cgst}%`);
       if (it.sgst > 0) ex.push(`SGST:${it.sgst}%`);
       if (ex.length > 0) line += ` [${ex.join(', ')}]`;
@@ -897,8 +895,6 @@ function sendPdf(res, report) {
       .map(function(it) { 
         var line = it.name + " x" + it.qty + " @Rs." + Number(it.price).toFixed(2);
         var ex = [];
-        if (it.description) ex.push("Desc: " + it.description);
-        if (it.discount > 0) ex.push("Disc: Rs." + it.discount);
         if (it.cgst > 0) ex.push("CGST:" + it.cgst + "%");
         if (it.sgst > 0) ex.push("SGST:" + it.sgst + "%");
         if (ex.length > 0) line += "\n   [" + ex.join(", ") + "]";
