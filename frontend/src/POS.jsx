@@ -1415,12 +1415,17 @@ function Reports() {
 
   useEffect(() => { loadReport(); }, []);
 
-  async function download(format) {
-    const response = await api.get(`/exports/${format}`, { params: range, responseType: "blob" });
+  async function download(format, taxMode = "") {
+    const params = { ...range };
+    if (taxMode) params.tax_mode = taxMode;
+    const response = await api.get(`/exports/${format}`, { params, responseType: "blob" });
     const url = URL.createObjectURL(response.data);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `pos-report-${range.from}-to-${range.to}.${format}`;
+    let fileName = `pos-report-${range.from}-to-${range.to}`;
+    if (taxMode === 'tax') fileName += '-tax';
+    if (taxMode === 'notax') fileName += '-notax';
+    link.download = `${fileName}.${format}`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -1435,12 +1440,32 @@ function Reports() {
 
   return (
     <section className="stacked">
-      <div className="content-panel report-controls">
-        <input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} />
-        <input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} />
-        <button className="primary-button" onClick={loadReport}>Run Report</button>
-        <button className="secondary-button" onClick={() => download("xlsx")}><FileSpreadsheet size={18} /> Excel</button>
-        <button className="secondary-button" onClick={() => download("pdf")}><Download size={18} /> PDF</button>
+      <div className="content-panel report-controls" style={{ flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", width: "100%", marginBottom: "4px" }}>
+          <input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} />
+          <input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} />
+          <button className="primary-button" onClick={loadReport}>Run Report</button>
+        </div>
+        
+        <div style={{ width: "100%", height: "1px", background: "#334155", margin: "4px 0" }}></div>
+        
+        <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap", width: "100%", paddingTop: "4px" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <span style={{color:"#94a3b8", fontSize:"13px", fontWeight:500}}>All Bills:</span>
+            <button className="secondary-button" onClick={() => download("xlsx")}><FileSpreadsheet size={16} /> Excel</button>
+            <button className="secondary-button" onClick={() => download("pdf")}><Download size={16} /> PDF</button>
+          </div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", borderLeft: "1px solid #334155", paddingLeft: "16px" }}>
+            <span style={{color:"#94a3b8", fontSize:"13px", fontWeight:500}}>Tax (Inc/Exc):</span>
+            <button className="secondary-button" onClick={() => download("xlsx", "tax")}><FileSpreadsheet size={16} /> Excel</button>
+            <button className="secondary-button" onClick={() => download("pdf", "tax")}><Download size={16} /> PDF</button>
+          </div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", borderLeft: "1px solid #334155", paddingLeft: "16px" }}>
+            <span style={{color:"#94a3b8", fontSize:"13px", fontWeight:500}}>No-Tax:</span>
+            <button className="secondary-button" onClick={() => download("xlsx", "notax")}><FileSpreadsheet size={16} /> Excel</button>
+            <button className="secondary-button" onClick={() => download("pdf", "notax")}><Download size={16} /> PDF</button>
+          </div>
+        </div>
       </div>
 
       {report ? (

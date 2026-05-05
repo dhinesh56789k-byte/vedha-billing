@@ -674,13 +674,20 @@ function dateRange(query) {
 
 async function buildReport(query) {
   const { from, to } = dateRange(query);
+  
+  let taxFilter = "";
+  if (query.tax_mode === 'tax') taxFilter = " AND s.tax_mode IN ('inclusive', 'exclusive')";
+  else if (query.tax_mode === 'notax') taxFilter = " AND s.tax_mode = 'no-tax'";
+  
+  const params = [from, to];
+
   const sales = await all(
     `SELECT s.*, u.username as cashier
      FROM sales s
      LEFT JOIN users u ON u.id = s.created_by
-     WHERE s.created_at::date BETWEEN $1::date AND $2::date
+     WHERE s.created_at::date BETWEEN $1::date AND $2::date ${taxFilter}
      ORDER BY s.created_at DESC`,
-    [from, to]
+    params
   );
 
   // Attach items to each sale (single batch query)
@@ -700,12 +707,12 @@ async function buildReport(query) {
   }
 
   const daily = await all(
-    `SELECT created_at::date as day, COUNT(*) as orders, ROUND(SUM(total), 2) as revenue
-     FROM sales
-     WHERE created_at::date BETWEEN $1::date AND $2::date
-     GROUP BY created_at::date
+    `SELECT s.created_at::date as day, COUNT(*) as orders, ROUND(SUM(s.total), 2) as revenue
+     FROM sales s
+     WHERE s.created_at::date BETWEEN $1::date AND $2::date ${taxFilter}
+     GROUP BY s.created_at::date
      ORDER BY day`,
-    [from, to]
+    params
   );
   const expenses = await all(
     `SELECT expense_date, category, description, amount
@@ -718,10 +725,10 @@ async function buildReport(query) {
     `SELECT si.name, SUM(si.qty) as qty, ROUND(SUM(si.line_total), 2) as revenue
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
-     WHERE s.created_at::date BETWEEN $1::date AND $2::date
+     WHERE s.created_at::date BETWEEN $1::date AND $2::date ${taxFilter}
      GROUP BY si.name
      ORDER BY revenue DESC`,
-    [from, to]
+    params
   );
 
   const revenue = sales.reduce((sum, sale) => sum + Number(sale.total), 0);
