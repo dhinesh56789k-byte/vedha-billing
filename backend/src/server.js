@@ -694,7 +694,7 @@ async function buildReport(query) {
   if (sales.length > 0) {
     const saleIds = sales.map(s => s.id);
     const items = await all(
-      `SELECT sale_id, name, qty, price, line_total
+      `SELECT sale_id, name, qty, price, line_total, description, cgst, sgst, discount
        FROM sale_items WHERE sale_id = ANY($1) ORDER BY sale_id, id`,
       [saleIds]
     );
@@ -755,73 +755,88 @@ async function sendExcel(res, report) {
   workbook.creator = "POS System";
   workbook.created = new Date();
 
-  // --- Summary tab ---
-  const sumSheet = workbook.addWorksheet("Summary");
-  [["Report Period", `${report.from} to ${report.to}`],["Total Orders", report.summary.orders],["Total Revenue", report.summary.revenue],["Total Expenses", report.summary.expenses],["Net Profit", report.summary.net]]
-    .forEach(([l, v]) => {
-      const r = sumSheet.addRow([l, v]);
-      r.getCell(1).font = { bold: true, size: 11 };
-      if (typeof v === "number") r.getCell(2).numFmt = "\u20b9#,##0.00";
-    });
-  sumSheet.getColumn(1).width = 20; sumSheet.getColumn(2).width = 22;
+  const tx = workbook.addWorksheet("Report Details");
+  
+  tx.mergeCells('A1', 'M1');
+  tx.getCell('A1').value = `Transaction Report | ${report.from} to ${report.to}`;
+  tx.getCell('A1').font = { size: 14, bold: true };
+  
+  tx.mergeCells('A2', 'D2');
+  tx.getCell('A2').value = `Total Orders: ${report.summary.orders} | Revenue: Rs.${report.summary.revenue.toFixed(2)} | Net: Rs.${report.summary.net.toFixed(2)}`;
+  tx.getCell('A2').font = { size: 11, color: { argb: "FF475569" } };
+  
+  tx.addRow([]);
 
-  // --- Transaction Details tab (matches on-screen table: one row per bill) ---
-  const tx = workbook.addWorksheet("Transaction Details");
   tx.columns = [
-    { header: "Invoice #",   key: "bill",     width: 12 },
-    { header: "Date & Time", key: "dt",       width: 24 },
-    { header: "Customer",    key: "customer", width: 20 },
-    { header: "Phone",       key: "phone",    width: 15 },
-    { header: "Products",    key: "products", width: 40 },
-    { header: "Subtotal",    key: "subtotal", width: 13 },
-    { header: "Tax (GST)",   key: "tax",      width: 13 },
-    { header: "Total",       key: "total",    width: 13 },
-    { header: "Payment",     key: "payment",  width: 12 }
+    { header: "Invoice #", key: "bill", width: 12 },
+    { header: "Date & Time", key: "dt", width: 22 },
+    { header: "Cashier", key: "cashier", width: 15 },
+    { header: "Tax Mode", key: "tax_mode", width: 12 },
+    { header: "Customer", key: "customer", width: 20 },
+    { header: "Phone", key: "phone", width: 15 },
+    { header: "Address", key: "address", width: 25 },
+    { header: "GST Number", key: "gst", width: 18 },
+    { header: "Products (Detailed)", key: "products", width: 55 },
+    { header: "Subtotal", key: "subtotal", width: 13 },
+    { header: "Tax", key: "tax", width: 13 },
+    { header: "Total", key: "total", width: 13 },
+    { header: "Payment", key: "payment", width: 12 }
   ];
-  // Header row style
-  const hdr = tx.getRow(1);
+
+  const hdr = tx.getRow(4);
   hdr.height = 26;
   hdr.eachCell(cell => {
     cell.fill = { type:"pattern", pattern:"solid", fgColor:{ argb:"FF1E3A5F" } };
     cell.font = { bold:true, color:{ argb:"FFFFFFFF" }, size:10 };
     cell.alignment = { vertical:"middle", horizontal:"center", wrapText:true };
-    cell.border = { bottom:{ style:"medium", color:{ argb:"FF2563EB" } } };
   });
-  // Data rows
+
   report.sales.forEach((s, i) => {
-    const products = (s.items || []).map(it => `${it.name} x${it.qty}  @  Rs.${Number(it.price).toFixed(2)}`).join("\n");
+    const products = (s.items || []).map(it => {
+      let line = `${it.name} x${it.qty} @ Rs.${Number(it.price).toFixed(2)}`;
+      let ex = [];
+      if (it.description) ex.push(`Desc: ${it.description}`);
+      if (it.discount > 0) ex.push(`Disc: Rs.${it.discount}`);
+      if (it.cgst > 0) ex.push(`CGST:${it.cgst}%`);
+      if (it.sgst > 0) ex.push(`SGST:${it.sgst}%`);
+      if (ex.length > 0) line += ` [${ex.join(', ')}]`;
+      return line;
+    }).join("\n");
+
     const row = tx.addRow({
       bill: `#${s.bill_number || s.id}`,
       dt: new Date(s.created_at).toLocaleString("en-IN", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:true }),
+      cashier: s.cashier || "admin",
+      tax_mode: s.tax_mode || "-",
       customer: s.customer || "Walk-in",
       phone: s.phone || "-",
+      address: s.address || "-",
+      gst: s.gst_number || "-",
       products,
       subtotal: Number(s.subtotal),
       tax: Number(s.tax),
       total: Number(s.total),
       payment: s.payment_method
     });
+
     row.height = Math.max(20, (s.items || []).length * 16);
     const bg = i % 2 === 0 ? "FFF0F4FF" : "FFFFFFFF";
     row.eachCell(cell => {
       cell.fill = { type:"pattern", pattern:"solid", fgColor:{ argb:bg } };
       cell.font = { size:9 };
       cell.alignment = { vertical:"top", wrapText:true };
-      cell.border = { bottom:{ style:"thin", color:{ argb:"FFD1D5DB" } }, right:{ style:"thin", color:{ argb:"FFD1D5DB" } } };
+      cell.border = { bottom:{ style:"thin", color:{ argb:"FFD1D5DB" } } };
     });
     ["subtotal","tax","total"].forEach(k => {
       const c = row.getCell(k); c.numFmt = "\u20b9#,##0.00"; c.alignment = { horizontal:"right", vertical:"top" };
     });
-    row.getCell("bill").font  = { bold:true, color:{ argb:"FF1D4ED8" }, size:9 };
-    row.getCell("total").font = { bold:true, color:{ argb:"FF16A34A" }, size:9 };
   });
-  tx.views = [{ state:"frozen", ySplit:1 }];
+  
+  tx.views = [{ state:"frozen", ySplit:4 }];
 
-  // --- Supporting tabs ---
-  addSheet(workbook, "Daily Sales",     [["Day","Orders","Revenue"], ...report.daily.map(r=>[r.day,r.orders,r.revenue])]);
+  addSheet(workbook, "Daily Sales", [["Day","Orders","Revenue"], ...report.daily.map(r=>[r.day,r.orders,r.revenue])]);
   addSheet(workbook, "Product Summary", [["Product","Qty Sold","Revenue"], ...report.products.map(p=>[p.name,p.qty,p.revenue])]);
-  addSheet(workbook, "Expenses",        [["Date","Category","Description","Amount"], ...report.expenses.map(e=>[e.expense_date,e.category,e.description,e.amount])]);
-
+  
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="pos-report-${report.from}-to-${report.to}.xlsx"`);
   await workbook.xlsx.write(res);
@@ -843,9 +858,9 @@ function sendPdf(res, report) {
   res.setHeader("Content-Disposition", 'attachment; filename="pos-report-' + report.from + '-to-' + report.to + '.pdf"');
   doc.pipe(res);
 
-  var COLS  = [48, 92, 78, 68, 188, 56, 46, 60, 50];
-  var HEADS = ["Invoice #","Date & Time","Customer","Phone","Products","Subtotal","Tax","Total","Payment"];
-  var PW    = doc.page.width - 40;
+  var COLS  = [120, 140, 380, 50, 50, 60];
+  var HEADS = ["Bill Info", "Customer", "Products (Detailed)", "Sub", "Tax", "Total"];
+  var PW    = 800; // 120+140+380+50+50+60 = 800
 
   function tableRow(y, cells, opts) {
     opts = opts || {};
@@ -860,8 +875,8 @@ function sendPdf(res, report) {
       var clr = (opts.cc && opts.cc[ci]) ? opts.cc[ci] : (opts.color || "#1e293b");
       doc.fillColor(clr).fontSize(opts.fs || 7.5)
          .text(String(txt || "-"), x + 3, y + 3, {
-           width: cw - 6, height: H - 4, ellipsis: true,
-           align: ci >= 5 ? "right" : "left"
+           width: cw - 6, height: H - 4, ellipsis: false,
+           align: ci >= 3 ? "right" : "left"
          });
       x += cw;
     });
@@ -879,9 +894,19 @@ function sendPdf(res, report) {
 
   report.sales.forEach(function(sale, i) {
     var products = (sale.items || [])
-      .map(function(it) { return it.name + " x" + it.qty + " @Rs." + Number(it.price).toFixed(2); })
-      .join("  |  ");
-    var lineH = Math.max(16, Math.ceil(products.length / 26) * 11);
+      .map(function(it) { 
+        var line = it.name + " x" + it.qty + " @Rs." + Number(it.price).toFixed(2);
+        var ex = [];
+        if (it.description) ex.push("Desc: " + it.description);
+        if (it.discount > 0) ex.push("Disc: Rs." + it.discount);
+        if (it.cgst > 0) ex.push("CGST:" + it.cgst + "%");
+        if (it.sgst > 0) ex.push("SGST:" + it.sgst + "%");
+        if (ex.length > 0) line += "\n   [" + ex.join(", ") + "]";
+        return line;
+      })
+      .join("\n\n");
+
+    var lineH = Math.max(70, Math.ceil(products.split("\n").length) * 11 + 10);
 
     if (y + lineH > doc.page.height - 25) {
       doc.addPage({ margin: 20, size: "A4", layout: "landscape" });
@@ -891,14 +916,16 @@ function sendPdf(res, report) {
 
     var bg = i % 2 === 0 ? "#eef2ff" : "#ffffff";
     var dt = new Date(sale.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+    
+    var billInfo = "Inv: #" + (sale.bill_number || sale.id) + "\nDate: " + dt + "\nCashier: " + (sale.cashier || "admin") + "\nTax Mode: " + (sale.tax_mode || "-") + "\nPay: " + sale.payment_method;
+    var custInfo = "Name: " + (sale.customer || "Walk-in") + "\nPhone: " + (sale.phone || "-") + "\nAddress: " + (sale.address || "-") + "\nGST: " + (sale.gst_number || "-");
+
     y = tableRow(y, [
-      "#" + (sale.bill_number || sale.id), dt,
-      sale.customer || "Walk-in", sale.phone || "-", products,
+      billInfo, custInfo, products,
       "Rs." + Number(sale.subtotal).toFixed(2),
       "Rs." + Number(sale.tax).toFixed(2),
-      "Rs." + Number(sale.total).toFixed(2),
-      sale.payment_method
-    ], { bg: bg, h: lineH, color: "#111827", cc: { 0: "#1d4ed8", 7: "#16a34a" } });
+      "Rs." + Number(sale.total).toFixed(2)
+    ], { bg: bg, h: lineH, color: "#111827", cc: { 5: "#16a34a" } });
   });
 
   doc.moveTo(20, y).lineTo(20 + PW, y).lineWidth(0.5).strokeColor("#94a3b8").stroke();
