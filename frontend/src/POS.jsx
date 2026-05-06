@@ -118,24 +118,20 @@ export default function POS({ session, onLogout }) {
     loadData().catch((error) => setMessage(error.response?.data?.error || "Could not load POS data"));
   }, []);
 
-  // Autofill customer details by phone
-  useEffect(() => {
-    if (phone.length >= 10) {
-      const timer = setTimeout(async () => {
-        try {
-          const res = await api.get(`/customers/${encodeURIComponent(phone)}/details`);
-          if (res.data && res.data.name) {
-            if (!customer) setCustomer(res.data.name);
-            if (!address && res.data.address) setAddress(res.data.address);
-            if (!gstNumber && res.data.gst_number) setGstNumber(res.data.gst_number);
-          }
-        } catch (e) {
-          // ignore errors for auto-fill
-        }
-      }, 400);
-      return () => clearTimeout(timer);
+  // Autofill customer details by phone (Triggered on Enter key)
+  async function searchCustomerByPhone(phoneNumber) {
+    if (!phoneNumber || phoneNumber.length < 5) return;
+    try {
+      const res = await api.get(`/customers/${encodeURIComponent(phoneNumber)}/details`);
+      if (res.data && res.data.name) {
+        setCustomer(res.data.name);
+        if (res.data.address) setAddress(res.data.address);
+        if (res.data.gst_number) setGstNumber(res.data.gst_number);
+      }
+    } catch (e) {
+      // ignore errors
     }
-  }, [phone, customer, address, gstNumber]);
+  }
 
   // Auto WhatsApp low-stock alert after checkout
   useEffect(() => {
@@ -584,10 +580,10 @@ function BillingView(props) {
 
       <aside className="cart-panel">
         <div className="customer-grid">
-          <input value={props.customer} placeholder="Customer" onChange={(event) => props.setCustomer(event.target.value)} />
-          <input value={props.phone} placeholder="Phone" onChange={(event) => props.setPhone(event.target.value)} />
-          <input value={props.address} placeholder="Address" onChange={(event) => props.setAddress(event.target.value)} />
-          <input value={props.gstNumber} placeholder="GST Number" onChange={(event) => props.setGstNumber(event.target.value)} />
+          <input type="search" value={props.customer} placeholder="Customer" onChange={(event) => props.setCustomer(event.target.value)} />
+          <input type="search" value={props.phone} placeholder="Phone (Press Enter)" onChange={(event) => props.setPhone(event.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') searchCustomerByPhone(props.phone); }} />
+          <input type="search" value={props.address} placeholder="Address" onChange={(event) => props.setAddress(event.target.value)} />
+          <input type="search" value={props.gstNumber} placeholder="GST Number" onChange={(event) => props.setGstNumber(event.target.value)} />
         </div>
         <div className="cart-list">
           {props.cart.length === 0 ? <div className="empty-cart">Cart is empty</div> : props.cart.map((item) => {
@@ -813,7 +809,7 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
   return (
     <section className="admin-layout">
       <form className="content-panel form-grid" onSubmit={save}>
-        <input placeholder="Product name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <input type="search" placeholder="Product name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         {/* Grouped category select: parents with children shown as groups */}
         <select value={form.category_id || ""} onChange={(e) => setForm({ ...form, category_id: Number(e.target.value) || null })}>
           {parents.map(p => {
@@ -831,7 +827,7 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
         <input type="number" min="0" placeholder="Price" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
         <input type="number" min="0" placeholder="Stock" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
         <input type="number" min="0" placeholder="Low stock alert" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} />
-        <input placeholder="Shop location (e.g. Shelf A3, Counter 2)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+        <input type="search" placeholder="Shop location (e.g. Shelf A3, Counter 2)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
         <button className="primary-button">{editingId ? "Update Product" : "Add Product"}</button>
       </form>
       
@@ -1013,7 +1009,7 @@ function StaffAdmin({ setMessage }) {
   return (
     <section className="admin-layout">
       <form className="content-panel form-grid" onSubmit={createUser}>
-        <input placeholder="Username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+        <input type="search" placeholder="Username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
         <input type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
           <option value="staff">Staff</option>
@@ -1049,6 +1045,8 @@ function CategoriesAdmin({ reload, setMessage, isAdmin }) {
   const [parentForm, setParentForm] = useState({ name: "" });
   const [childForm, setChildForm] = useState({ name: "" });
   const [movingId, setMovingId] = useState(null); // id of category being reassigned
+  const [editingCatId, setEditingCatId] = useState(null);
+  const [editName, setEditName] = useState("");
 
   async function loadCategories() {
     const data = (await api.get("/categories")).data;
@@ -1089,6 +1087,15 @@ function CategoriesAdmin({ reload, setMessage, isAdmin }) {
     await loadCategories(); await reload();
   }
 
+  async function renameCategory(catId) {
+    if (!editName.trim()) return;
+    await api.patch(`/categories/${catId}`, { name: editName.trim() });
+    setEditingCatId(null);
+    setEditName("");
+    setMessage("Category renamed.");
+    await loadCategories(); await reload();
+  }
+
   async function removeCategory(id, hasChildren) {
     const msg = hasChildren
       ? "Delete this parent category and ALL its sub-categories? Products will be reset to General."
@@ -1126,24 +1133,39 @@ function CategoriesAdmin({ reload, setMessage, isAdmin }) {
                   className={`cat-item${selectedParent?.id === p.id ? " cat-item-active" : ""}`}
                   onClick={() => { setSelectedParent(p); setMovingId(null); }}
                 >
-                  <span className="cat-item-name">
-                    {p.name}
-                    {hasKids && <span className="cat-child-count"> ({categories.filter(c => c.parent_id === p.id).length})</span>}
-                  </span>
-                  {p.name !== "General" && isAdmin && (
-                    <span style={{display:"flex",gap:"4px"}}>
-                      <button
-                        className="cat-delete-btn"
-                        style={{color:"#38bdf8",opacity:0.7}}
-                        onClick={ev => { ev.stopPropagation(); setMovingId(movingId === p.id ? null : p.id); }}
-                        title="Move under a parent"
-                      >⇢</button>
-                      <button
-                        className="cat-delete-btn"
-                        onClick={ev => { ev.stopPropagation(); removeCategory(p.id, hasKids); }}
-                        title="Delete"
-                      ><Trash2 size={14} /></button>
-                    </span>
+                  {editingCatId === p.id ? (
+                    <div style={{display:"flex", gap:"8px", flex: 1}} onClick={(e)=>e.stopPropagation()}>
+                      <input type="search" value={editName} autoFocus onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') renameCategory(p.id); }} />
+                      <button className="primary-button" style={{padding:"4px 8px"}} onClick={() => renameCategory(p.id)}>Save</button>
+                      <button className="secondary-button" style={{padding:"4px 8px"}} onClick={() => setEditingCatId(null)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="cat-item-name">
+                        {p.name}
+                        {hasKids && <span className="cat-child-count"> ({categories.filter(c => c.parent_id === p.id).length})</span>}
+                      </span>
+                      {p.name !== "General" && isAdmin && (
+                        <span style={{display:"flex",gap:"4px"}}>
+                          <button
+                            className="cat-delete-btn"
+                            onClick={ev => { ev.stopPropagation(); setEditingCatId(p.id); setEditName(p.name); setMovingId(null); }}
+                            title="Rename"
+                          ><Pencil size={14} /></button>
+                          <button
+                            className="cat-delete-btn"
+                            style={{color:"#38bdf8",opacity:0.7}}
+                            onClick={ev => { ev.stopPropagation(); setMovingId(movingId === p.id ? null : p.id); setEditingCatId(null); }}
+                            title="Move under a parent"
+                          >⇢</button>
+                          <button
+                            className="cat-delete-btn"
+                            onClick={ev => { ev.stopPropagation(); removeCategory(p.id, hasKids); }}
+                            title="Delete"
+                          ><Trash2 size={14} /></button>
+                        </span>
+                      )}
+                    </>
                   )}
                   {/* Inline move dropdown */}
                   {movingId === p.id && (
@@ -1186,13 +1208,30 @@ function CategoriesAdmin({ reload, setMessage, isAdmin }) {
                 ) : (
                   children.map(c => (
                     <div key={c.id} className="cat-item">
-                      <span className="cat-item-name">{c.name}</span>
-                      {isAdmin && (
-                        <button
-                          className="cat-delete-btn"
-                          onClick={() => removeCategory(c.id, false)}
-                          title="Delete"
-                        ><Trash2 size={14} /></button>
+                      {editingCatId === c.id ? (
+                        <div style={{display:"flex", gap:"8px", flex: 1, paddingRight: "8px"}} onClick={(e)=>e.stopPropagation()}>
+                          <input type="search" value={editName} autoFocus onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') renameCategory(c.id); }} />
+                          <button className="primary-button" style={{padding:"4px 8px"}} onClick={() => renameCategory(c.id)}>Save</button>
+                          <button className="secondary-button" style={{padding:"4px 8px"}} onClick={() => setEditingCatId(null)}>Cancel</button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="cat-item-name">{c.name}</span>
+                          {isAdmin && (
+                            <span style={{display:"flex",gap:"4px"}}>
+                              <button
+                                className="cat-delete-btn"
+                                onClick={ev => { ev.stopPropagation(); setEditingCatId(c.id); setEditName(c.name); }}
+                                title="Rename"
+                              ><Pencil size={14} /></button>
+                              <button
+                                className="cat-delete-btn"
+                                onClick={ev => { ev.stopPropagation(); removeCategory(c.id, false); }}
+                                title="Delete"
+                              ><Trash2 size={14} /></button>
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   ))
@@ -1298,7 +1337,7 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
       <div className="content-panel stacked">
         <div className="search-box">
           <Search size={18} />
-          <input value={search} placeholder="Search customer or phone" onChange={(e) => setSearch(e.target.value)} />
+          <input type="search" value={search} placeholder="Search customer or phone" onChange={(e) => setSearch(e.target.value)} />
           <button onClick={loadCustomers}>Search</button>
         </div>
         <DataTable
@@ -1606,8 +1645,8 @@ function Expenses({ setMessage, isAdmin }) {
   return (
     <section className="admin-layout">
       <form className="content-panel form-grid" onSubmit={saveExpense}>
-        <input placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <input placeholder="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+        <input type="search" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <input type="search" placeholder="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
         <input type="number" min="0" placeholder="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
         <input type="date" value={form.expense_date} onChange={(e) => setForm({ ...form, expense_date: e.target.value })} />
         <button className="primary-button">Add Expense</button>

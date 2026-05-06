@@ -194,6 +194,7 @@ app.patch("/categories/:id", auth(["admin"]), async (req, res, next) => {
     const current = await get("SELECT * FROM categories WHERE id = $1", [req.params.id]);
     if (!current) return res.status(404).json({ error: "Category not found" });
 
+    const name = req.body.name !== undefined ? req.body.name : current.name;
     const parent_id = req.body.parent_id !== undefined ? req.body.parent_id : current.parent_id;
 
     if (parent_id) {
@@ -203,7 +204,7 @@ app.patch("/categories/:id", auth(["admin"]), async (req, res, next) => {
       if (parent_id === current.id) return res.status(400).json({ error: "A category cannot be its own parent" });
     }
 
-    await run("UPDATE categories SET parent_id = $1 WHERE id = $2", [parent_id || null, req.params.id]);
+    await run("UPDATE categories SET name = $1, parent_id = $2 WHERE id = $3", [name.trim(), parent_id || null, req.params.id]);
     const updated = await get("SELECT * FROM categories WHERE id = $1", [req.params.id]);
     res.json(updated);
   } catch (error) {
