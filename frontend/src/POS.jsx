@@ -118,6 +118,25 @@ export default function POS({ session, onLogout }) {
     loadData().catch((error) => setMessage(error.response?.data?.error || "Could not load POS data"));
   }, []);
 
+  // Autofill customer details by phone
+  useEffect(() => {
+    if (phone.length >= 10) {
+      const timer = setTimeout(async () => {
+        try {
+          const res = await api.get(`/customers/${encodeURIComponent(phone)}/details`);
+          if (res.data && res.data.name) {
+            if (!customer) setCustomer(res.data.name);
+            if (!address && res.data.address) setAddress(res.data.address);
+            if (!gstNumber && res.data.gst_number) setGstNumber(res.data.gst_number);
+          }
+        } catch (e) {
+          // ignore errors for auto-fill
+        }
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [phone, customer, address, gstNumber]);
+
   // Auto WhatsApp low-stock alert after checkout
   useEffect(() => {
     if (!justCheckedOut) return;

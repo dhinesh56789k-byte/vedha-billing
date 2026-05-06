@@ -481,6 +481,22 @@ app.get("/customers", auth(), async (req, res, next) => {
   }
 });
 
+app.get("/customers/:phone/details", auth(), async (req, res, next) => {
+  try {
+    const details = await get(
+      `SELECT customer as name, address, gst_number
+       FROM sales
+       WHERE phone = $1 AND customer IS NOT NULL AND customer != ''
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [req.params.phone]
+    );
+    res.json(details || {});
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/customers/:phone/history", auth(), async (req, res, next) => {
   try {
     const sales = await all(
