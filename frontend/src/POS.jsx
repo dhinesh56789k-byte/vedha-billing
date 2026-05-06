@@ -536,6 +536,7 @@ function BillingView(props) {
         <div className="search-box">
           <Search size={18} />
           <input
+            type="search"
             value={query}
             placeholder="Search products or categories"
             onChange={(e) => { setQuery(e.target.value); if (e.target.value) setCategoryPath([]); }}
@@ -835,6 +836,7 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
       <div className="search-box admin-search" style={{ marginBottom: "16px" }}>
         <Search size={18} />
         <input 
+          type="search"
           placeholder="Search products by name or category..." 
           value={searchQuery} 
           onChange={(e) => setSearchQuery(e.target.value)} 
