@@ -1981,9 +1981,17 @@ function Receipt80mm({ receipt }) {
 
         {/* Items */}
         {items.map((item, idx) => {
-          const effectiveRate = Number(item.price) - (item.discount || 0);
-          const rate = isInclusive ? effectiveRate / 1.18 : effectiveRate;
-          const amt = effectiveRate * item.qty;
+          const discount = item.discount || 0;
+          const effectiveRate = Number(item.price) - discount;
+          let rate = effectiveRate;
+          let amt = effectiveRate * item.qty;
+          if (isInclusive) {
+            const cgstRate = (item.cgst ?? 9) / 100;
+            const sgstRate = (item.sgst ?? 9) / 100;
+            const totalRate = 1 + cgstRate + sgstRate;
+            rate = effectiveRate / totalRate;
+            amt = amt / totalRate;
+          }
           return (
             <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 26px 54px 54px", fontSize: "11px", gap: "2px", marginBottom: "2px" }}>
               <span style={{ wordBreak: "break-word" }}>{item.name}</span>
@@ -1998,7 +2006,7 @@ function Receipt80mm({ receipt }) {
 
         {/* Totals */}
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "2px" }}>
-          <span>Total</span><span>{Number(receipt.subtotal).toFixed(2)}</span>
+          <span>Total</span><span>{Number(isInclusive ? receipt.total - receipt.tax : receipt.subtotal).toFixed(2)}</span>
         </div>
         {!isTaxFree && <>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "2px" }}>
@@ -2110,7 +2118,7 @@ function Receipt({ receipt, paper }) {
                {receipt.items.map((item, idx) => {
                  const discount = item.discount || 0;
                  const effectiveRate = item.price - discount;
-                 const amount = effectiveRate * item.qty;
+                 let amount = effectiveRate * item.qty;
                  const cgstRate = (item.cgst ?? 9) / 100;
                  const sgstRate = (item.sgst ?? 9) / 100;
                  let cgst = 0, sgst = 0, rate = effectiveRate;
@@ -2121,6 +2129,7 @@ function Receipt({ receipt, paper }) {
                    cgst = baseAmount * cgstRate;
                    sgst = baseAmount * sgstRate;
                    rate = effectiveRate / totalRate;
+                   amount = baseAmount;
                  }
                  return (
                    <tr key={item.product_id + "-" + idx}>
@@ -2152,7 +2161,7 @@ function Receipt({ receipt, paper }) {
                    <div className="words-amount" style={{textTransform: "uppercase"}}>{numberToWords(receipt.total)}</div>
                 </td>
                 <td style={{border: "1px solid #000", padding: "8px", fontWeight: "bold", textAlign: "center", width: "15%"}}>TOTAL</td>
-                <td style={{border: "1px solid #000", borderRight: "none", padding: "8px", fontWeight: "bold", textAlign: "center", width: "15%"}}>{currency.format(receipt.subtotal)}</td>
+                <td style={{border: "1px solid #000", borderRight: "none", padding: "8px", fontWeight: "bold", textAlign: "center", width: "15%"}}>{currency.format(isInclusive ? receipt.total - receipt.tax : receipt.subtotal)}</td>
               </tr>
               <tr>
                 <td style={{border: "1px solid #000", padding: "8px", fontWeight: "bold", textAlign: "center"}}>CGST</td>
