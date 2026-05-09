@@ -584,7 +584,7 @@ function BillingView(props) {
         <div className="customer-grid">
           <input type="search" value={props.customer} placeholder="Customer" onChange={(event) => props.setCustomer(event.target.value)} />
           <input type="search" value={props.phone} placeholder="Phone (Press Enter)" onChange={(event) => props.setPhone(event.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') props.searchCustomerByPhone(props.phone); }} />
-          <input type="search" value={props.address} placeholder="Address" onChange={(event) => props.setAddress(event.target.value)} />
+          <textarea value={props.address} placeholder="Address (Press Enter for new line)" onChange={(event) => props.setAddress(event.target.value)} rows="2" style={{ resize: "vertical", fontFamily: "inherit" }} />
           <input type="search" value={props.gstNumber} placeholder="GST Number" onChange={(event) => props.setGstNumber(event.target.value)} />
         </div>
         <div className="cart-list">
