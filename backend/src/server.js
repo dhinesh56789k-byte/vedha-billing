@@ -87,7 +87,7 @@ app.get("/products", auth(), async (req, res, next) => {
 
 app.post("/products", auth(), async (req, res, next) => {
   try {
-    const { name, category_id, price, stock = 0, low_stock_threshold = 5, location = "" } = req.body;
+    const { name, category_id, price, stock = 0, low_stock_threshold = 5, location = "", barcode = null } = req.body;
     if (!name || price === undefined) {
       return res.status(400).json({ error: "Product name and price are required" });
     }
@@ -100,10 +100,10 @@ app.post("/products", auth(), async (req, res, next) => {
     }
 
     const result = await run(
-      `INSERT INTO products (name, category_id, price, stock, low_stock_threshold, location)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO products (name, category_id, price, stock, low_stock_threshold, location, barcode)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [name.trim(), finalCategoryId, Number(price), Number(stock), Number(low_stock_threshold), location.trim()]
+      [name.trim(), finalCategoryId, Number(price), Number(stock), Number(low_stock_threshold), location.trim(), barcode?.trim() || null]
     );
 
     const product = await get(
@@ -290,13 +290,14 @@ app.patch("/products/:id", auth(), async (req, res, next) => {
       price: req.body.price ?? current.price,
       stock: req.body.stock ?? current.stock,
       low_stock_threshold: req.body.low_stock_threshold ?? current.low_stock_threshold,
-      location: req.body.location ?? current.location ?? ""
+      location: req.body.location ?? current.location ?? "",
+      barcode: req.body.barcode !== undefined ? (req.body.barcode?.trim() || null) : current.barcode
     };
 
     await run(
       `UPDATE products
-       SET name = $1, category_id = $2, price = $3, stock = $4, low_stock_threshold = $5, location = $6, updated_at = NOW()
-       WHERE id = $7`,
+       SET name = $1, category_id = $2, price = $3, stock = $4, low_stock_threshold = $5, location = $6, barcode = $7, updated_at = NOW()
+       WHERE id = $8`,
       [
         nextProduct.name,
         nextProduct.category_id,
@@ -304,6 +305,7 @@ app.patch("/products/:id", auth(), async (req, res, next) => {
         Number(nextProduct.stock),
         Number(nextProduct.low_stock_threshold),
         nextProduct.location,
+        nextProduct.barcode,
         req.params.id
       ]
     );

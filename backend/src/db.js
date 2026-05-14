@@ -82,6 +82,7 @@ async function initDb() {
     stock INTEGER NOT NULL DEFAULT 0,
     low_stock_threshold INTEGER NOT NULL DEFAULT 5,
     location TEXT NOT NULL DEFAULT '',
+    barcode TEXT UNIQUE,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -89,6 +90,9 @@ async function initDb() {
 
   // Migration: Add category_id if it doesn't exist
   await ensureColumn("products", "category_id", "INTEGER REFERENCES categories(id) ON DELETE SET NULL");
+
+  // Migration: Add barcode if it doesn't exist
+  await ensureColumn("products", "barcode", "TEXT UNIQUE");
 
   // Migration: Data mapping (Text category -> ID category)
   // 1. Ensure all text categories exist in categories table

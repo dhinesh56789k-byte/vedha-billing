@@ -475,6 +475,44 @@ function BillingView(props) {
   const [query, setQuery] = useState("");
   const [categoryPath, setCategoryPath] = useState([]);
 
+  // Barcode Scanner Listener
+  useEffect(() => {
+    let buffer = "";
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e) => {
+      const currentTime = Date.now();
+      
+      // If time between keystrokes is more than 50ms, it's likely human typing, not a scanner
+      if (currentTime - lastKeyTime > 50) {
+        buffer = "";
+      }
+      
+      if (e.key === 'Enter') {
+        if (buffer.length > 3) { 
+          // Potential scan detected!
+          const product = props.products.find(p => p.barcode === buffer);
+          if (product) {
+            props.addToCart(product);
+            // If they scanned while focused on the search box, clear it
+            if (e.target.tagName === 'INPUT' && e.target.type === 'search') {
+              setQuery("");
+            }
+            e.preventDefault();
+          }
+        }
+        buffer = "";
+      } else if (e.key.length === 1) { // Normal character
+        buffer += e.key;
+      }
+      
+      lastKeyTime = currentTime;
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [props.products, props.addToCart]);
+
   // Not needed globally as showGlobalPreview handles it
 
   // Removed captureAsPng (moved to global)
@@ -491,7 +529,7 @@ function BillingView(props) {
   const filteredProducts = (() => {
     if (query.trim()) {
       const t = query.trim().toLowerCase();
-      return props.products.filter(p => [p.name || "", p.category_name || ""].join(" ").toLowerCase().includes(t));
+      return props.products.filter(p => [p.name || "", p.category_name || "", p.barcode || ""].join(" ").toLowerCase().includes(t));
     }
     if (leafCatId) return props.products.filter(p => p.category_id === leafCatId);
     return [];
@@ -728,7 +766,7 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
   const hasChildrenSet = new Set(categories.filter(c => c.parent_id).map(c => c.parent_id));
   const leafParents = parents.filter(p => !hasChildrenSet.has(p.id));
   const defaultCategoryId = leafParents.length > 0 ? leafParents[0].id : (categories.find(c => c.name === 'General')?.id || null);
-  const blank = { name: "", category_id: defaultCategoryId, price: "", stock: "", low_stock_threshold: 5, location: "" };
+  const blank = { name: "", category_id: defaultCategoryId, price: "", stock: "", low_stock_threshold: 5, location: "", barcode: "" };
   const [form, setForm] = useState(blank);
   const [editingId, setEditingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -746,7 +784,8 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
         return (
           (p.name || "").toLowerCase().includes(q) ||
           (p.category_name || "").toLowerCase().includes(q) ||
-          (p.location || "").toLowerCase().includes(q)
+          (p.location || "").toLowerCase().includes(q) ||
+          (p.barcode || "").toLowerCase().includes(q)
         );
       })
       .sort((a, b) => {
@@ -768,7 +807,8 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
       price: product.price,
       stock: product.stock,
       low_stock_threshold: product.low_stock_threshold,
-      location: product.location || ""
+      location: product.location || "",
+      barcode: product.barcode || ""
     });
   }
 
@@ -829,8 +869,9 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
         <input type="number" min="0" placeholder="Price" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
         <input type="number" min="0" placeholder="Stock" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
         <input type="number" min="0" placeholder="Low stock alert" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} />
-        <input type="search" placeholder="Shop location (e.g. Shelf A3, Counter 2)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-        <button className="primary-button">{editingId ? "Update Product" : "Add Product"}</button>
+        <input type="search" placeholder="Shop location (e.g. Shelf A3)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+        <input type="search" placeholder="Barcode (Scan or Type)" value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} />
+        <button className="primary-button" style={{ gridColumn: "1/-1" }}>{editingId ? "Update Product" : "Add Product"}</button>
       </form>
       
       <div className="search-box admin-search" style={{ marginBottom: "16px" }}>
@@ -844,10 +885,11 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
       </div>
 
       <DataTable
-        columns={["Name", "Category", "Location", "Price", "Stock", "Actions"]}
+        columns={["Name", "Category", "Barcode", "Location", "Price", "Stock", "Actions"]}
         rows={filteredAdminProducts.map((product) => [
           product.name,
           product.category_name || product.category,
+          product.barcode || "-",
           product.location
             ? <span style={{background:"#1e3a5f",color:"#7dd3fc",borderRadius:"4px",padding:"2px 8px",fontSize:"11px",fontWeight:600}}>📍 {product.location}</span>
             : <span style={{color:"#475569",fontSize:"11px"}}>—</span>,
