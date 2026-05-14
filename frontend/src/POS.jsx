@@ -32,6 +32,7 @@ import {
   Wrench
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
+import Barcode from 'react-barcode';
 import api from "./api.js";
 import { printReceipt } from "./electron.js";
 
@@ -85,6 +86,8 @@ export default function POS({ session, onLogout }) {
   const [busy, setBusy] = useState(false);
   const [reprintPending, setReprintPending] = useState(false);
   const [viewPngPending, setViewPngPending] = useState(false);
+  const [printingBarcode, setPrintingBarcode] = useState(null);
+  const [barcodeCopies, setBarcodeCopies] = useState(1);
   const [showGlobalPreview, setShowGlobalPreview] = useState(false);
   const [capturingPng, setCapturingPng] = useState(false);
   const receiptRef = useRef(null);
@@ -394,7 +397,7 @@ export default function POS({ session, onLogout }) {
         ) : null}
         {activeView === "dashboard" ? <Dashboard dashboard={dashboard} /> : null}
         {activeView === "products" ? (
-          <ProductsAdmin products={products} categories={categories} reload={loadData} setMessage={setMessage} isAdmin={isAdmin} />
+          <ProductsAdmin products={products} categories={categories} reload={loadData} setMessage={setMessage} isAdmin={isAdmin} setPrintingBarcode={setPrintingBarcode} />
         ) : null}
         {activeView === "categories" ? <CategoriesAdmin reload={loadData} setMessage={setMessage} isAdmin={isAdmin} /> : null}
         {activeView === "staff" && isAdmin ? <StaffAdmin setMessage={setMessage} /> : null}
@@ -406,21 +409,34 @@ export default function POS({ session, onLogout }) {
 
       {/* The hidden receipt that actually gets printed by the browser window.print() */}
       <div className={`paper-${paper}`}>
-        <Receipt
-          paper={paper}
-          receipt={receipt.billNumber ? receipt : {
-            ...receipt,
-            items: cart,
-            subtotal: subtotal,
-            tax: tax,
-            total: total,
-            customer: customer,
-            phone: phone,
-            address: address,
-            gstNumber: gstNumber,
-            date: new Date().toLocaleString()
-          }}
-        />
+        {printingBarcode ? (
+          Array.from({ length: barcodeCopies }).map((_, i) => (
+            <section key={i} className="receipt-print" style={{ width: "50mm", height: "25mm", margin: "0", padding: "1mm 2mm", boxSizing: "border-box", textAlign: "center", background: "#fff", color: "#000", fontFamily: "Arial, sans-serif", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", pageBreakAfter: "always" }}>
+               <div style={{fontSize: '8px', fontWeight: '900'}}>VEDHA MOBILE</div>
+               <div style={{fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{printingBarcode.name}</div>
+               <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '1px 0'}}>
+                 <Barcode value={printingBarcode.barcode} width={1} height={20} fontSize={10} displayValue={true} margin={0} />
+               </div>
+               <div style={{fontSize: '11px', fontWeight: '900'}}>{currency.format(printingBarcode.price)}</div>
+            </section>
+          ))
+        ) : (
+          <Receipt
+            paper={paper}
+            receipt={receipt.billNumber ? receipt : {
+              ...receipt,
+              items: cart,
+              subtotal: subtotal,
+              tax: tax,
+              total: total,
+              customer: customer,
+              phone: phone,
+              address: address,
+              gstNumber: gstNumber,
+              date: new Date().toLocaleString()
+            }}
+          />
+        )}
       </div>
 
       {/* Global Print Preview Modal */}
@@ -460,6 +476,45 @@ export default function POS({ session, onLogout }) {
                 paper={paper}
                 receipt={receipt}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Barcode Print Preview Modal */}
+      {printingBarcode && (
+        <div className="preview-modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="preview-modal-content" style={{ width: '320px' }}>
+            <div className="preview-modal-actions" style={{ flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '150px' }}>
+                <span style={{ fontSize: '13px', fontWeight: '500' }}>Copies:</span>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="500" 
+                  value={barcodeCopies} 
+                  onChange={(e) => setBarcodeCopies(Math.max(1, parseInt(e.target.value) || 1))}
+                  style={{ width: '60px', padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                />
+              </div>
+              <button className="secondary-button" onClick={() => setPrintingBarcode(null)}>Close</button>
+              <button className="primary-button" onClick={() => {
+                setTimeout(() => {
+                  printReceipt(paper);
+                  setPrintingBarcode(null);
+                  setBarcodeCopies(1); // Reset copies after printing
+                }, 150);
+              }}>Print {barcodeCopies > 1 ? `${barcodeCopies} Labels` : 'Label'}</button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '20px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ width: "50mm", height: "25mm", padding: "1mm 2mm", boxSizing: "border-box", textAlign: "center", background: "#fff", color: "#000", fontFamily: "Arial, sans-serif", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
+                <div style={{fontSize: '8px', fontWeight: '900'}}>VEDHA MOBILE</div>
+                <div style={{fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{printingBarcode.name}</div>
+                <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '1px 0'}}>
+                  <Barcode value={printingBarcode.barcode} width={1} height={20} fontSize={10} displayValue={true} margin={0} />
+                </div>
+                <div style={{fontSize: '11px', fontWeight: '900'}}>{currency.format(printingBarcode.price)}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -760,7 +815,7 @@ function ProductCard({ product, addToCart }) {
   );
 }
 
-function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
+function ProductsAdmin({ products, categories, reload, setMessage, isAdmin, setPrintingBarcode }) {
   // Leaf categories: parents with no children + all child categories
   const parents = categories.filter(c => !c.parent_id);
   const hasChildrenSet = new Set(categories.filter(c => c.parent_id).map(c => c.parent_id));
@@ -896,9 +951,12 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin }) {
           currency.format(product.price),
           product.stock,
           <span className="row-actions" key={product.id}>
-            <button onClick={() => edit(product)}><Pencil size={15} /></button>
+            {product.barcode && (
+              <button onClick={() => setPrintingBarcode(product)} title="Print Barcode Label"><Printer size={15} /></button>
+            )}
+            <button onClick={() => edit(product)} title="Edit"><Pencil size={15} /></button>
             {isAdmin && (
-              <button onClick={() => remove(product.id)}><Trash2 size={15} /></button>
+              <button onClick={() => remove(product.id)} title="Delete"><Trash2 size={15} /></button>
             )}
           </span>
         ])}
