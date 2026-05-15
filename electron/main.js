@@ -64,7 +64,7 @@ function createWindow() {
     };
   });
 
-  win.loadURL("https://vedha-billing-frontend.vercel.app/");
+  win.loadURL("https://vedha-billing.onrender.com");
 }
 
 app.whenReady().then(() => {

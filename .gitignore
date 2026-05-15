@@ -1,7 +1,6 @@
 node_modules/
 dist/
 build/
-!frontend/dist/
 *.log
 backend/database.sqlite
 backend/database.sqlite-*
