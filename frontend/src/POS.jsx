@@ -32,7 +32,6 @@ import {
   Wrench
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
-import JsBarcode from 'jsbarcode';
 import api from "./api.js";
 import { printReceipt } from "./electron.js";
 
@@ -42,26 +41,49 @@ const currency = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 2
 });
 
-// Simple barcode renderer using JsBarcode directly
-function BarcodeLabel({ value, width = 1, height = 20, fontSize = 10 }) {
-  const svgRef = useRef(null);
-  useEffect(() => {
-    if (svgRef.current && value) {
-      try {
-        JsBarcode(svgRef.current, value, {
-          format: "CODE128",
-          width,
-          height,
-          fontSize,
-          displayValue: true,
-          margin: 0
-        });
-      } catch (e) {
-        // Invalid barcode value
-      }
+// Zero-dependency Code128 barcode generator
+const CODE128_CHARS = ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~';
+const CODE128_VALS = [212222,222122,222221,121223,121322,131222,122213,122312,132212,221213,221312,231212,112232,122132,122231,113222,123122,123221,223211,221132,221231,213212,223112,312131,311222,321122,321221,312212,322112,322211,212123,212321,232121,111323,131123,131321,112313,132113,132311,211313,231113,231311,112133,112331,132131,113123,113321,133121,313121,211331,231131,213113,213311,213131,311123,311321,331121,312113,312311,332111,314111,221411,431111,111224,111422,121124,121421,141122,141221,112214,112412,122114,122411,142112,142211,241211,221114,213111,241112,134111,111242,121142,121241,114212,124112,124211,411212,421112,421211,212141,214121,412121,111143,111341,131141,114113,114311,411113,411311,113141,114131,311141,411131,211412,211214,211232,2331112];
+
+function encodeCode128(text) {
+  const startB = 104;
+  const stop = 106;
+  let codes = [startB];
+  let check = startB;
+  for (let i = 0; i < text.length; i++) {
+    const idx = CODE128_CHARS.indexOf(text[i]);
+    if (idx === -1) continue;
+    codes.push(idx);
+    check += idx * (i + 1);
+  }
+  codes.push(check % 103);
+  codes.push(stop);
+  return codes;
+}
+
+function BarcodeLabel({ value, height = 40 }) {
+  if (!value) return null;
+  const codes = encodeCode128(String(value));
+  const bars = [];
+  let x = 0;
+  const quiet = 10;
+  x += quiet;
+  codes.forEach(code => {
+    const pattern = String(CODE128_VALS[code] || 0).padStart(6, '0');
+    for (let i = 0; i < 6; i++) {
+      const w = parseInt(pattern[i]);
+      if (i % 2 === 0) bars.push({ x, w }); // bar
+      x += w;
     }
-  }, [value, width, height, fontSize]);
-  return <svg ref={svgRef} />;
+  });
+  x += quiet;
+  const totalW = x;
+  return (
+    <svg width={totalW} height={height + 14} viewBox={`0 0 ${totalW} ${height + 14}`} style={{ maxWidth: '100%' }}>
+      {bars.map((b, i) => <rect key={i} x={b.x} y={0} width={b.w} height={height} fill="#000" />)}
+      <text x={totalW / 2} y={height + 11} textAnchor="middle" fontSize="9" fontFamily="monospace" fill="#000">{value}</text>
+    </svg>
+  );
 }
 
 const now = new Date();
