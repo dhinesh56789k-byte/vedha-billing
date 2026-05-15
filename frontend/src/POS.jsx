@@ -32,7 +32,7 @@ import {
   Wrench
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
-import Barcode from 'react-barcode';
+import JsBarcode from 'jsbarcode';
 import api from "./api.js";
 import { printReceipt } from "./electron.js";
 
@@ -41,6 +41,28 @@ const currency = new Intl.NumberFormat("en-IN", {
   currency: "INR",
   maximumFractionDigits: 2
 });
+
+// Simple barcode renderer using JsBarcode directly
+function BarcodeLabel({ value, width = 1, height = 20, fontSize = 10 }) {
+  const svgRef = useRef(null);
+  useEffect(() => {
+    if (svgRef.current && value) {
+      try {
+        JsBarcode(svgRef.current, value, {
+          format: "CODE128",
+          width,
+          height,
+          fontSize,
+          displayValue: true,
+          margin: 0
+        });
+      } catch (e) {
+        // Invalid barcode value
+      }
+    }
+  }, [value, width, height, fontSize]);
+  return <svg ref={svgRef} />;
+}
 
 const now = new Date();
 const tzOffset = now.getTimezoneOffset() * 60000;
@@ -415,7 +437,7 @@ export default function POS({ session, onLogout }) {
                <div style={{fontSize: '8px', fontWeight: '900'}}>VEDHA MOBILE</div>
                <div style={{fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{printingBarcode.name}</div>
                <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '1px 0'}}>
-                 <Barcode value={printingBarcode.barcode} width={1} height={20} fontSize={10} displayValue={true} margin={0} />
+                 <BarcodeLabel value={printingBarcode.barcode} width={1} height={20} fontSize={10} />
                </div>
                <div style={{fontSize: '11px', fontWeight: '900'}}>{currency.format(printingBarcode.price)}</div>
             </section>
@@ -511,7 +533,7 @@ export default function POS({ session, onLogout }) {
                 <div style={{fontSize: '8px', fontWeight: '900'}}>VEDHA MOBILE</div>
                 <div style={{fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{printingBarcode.name}</div>
                 <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '1px 0'}}>
-                  <Barcode value={printingBarcode.barcode} width={1} height={20} fontSize={10} displayValue={true} margin={0} />
+                  <BarcodeLabel value={printingBarcode.barcode} width={1} height={20} fontSize={10} />
                 </div>
                 <div style={{fontSize: '11px', fontWeight: '900'}}>{currency.format(printingBarcode.price)}</div>
               </div>
