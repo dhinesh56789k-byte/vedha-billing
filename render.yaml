@@ -2,8 +2,9 @@ services:
   - type: web
     name: vedha-billing
     runtime: node
-    buildCommand: npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend
-    startCommand: node backend/src/server.js
+    rootDir: backend
+    buildCommand: npm install && cd ../frontend && npm install && npm run build
+    startCommand: node src/server.js
     envVars:
       - key: NODE_ENV
         value: production
