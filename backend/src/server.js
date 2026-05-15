@@ -8,6 +8,8 @@ const jwt = require("jsonwebtoken");
 const PDFDocument = require("pdfkit");
 const { all, get, initDb, run, transaction } = require("./db");
 
+const path = require("path");
+
 const app = express();
 const port = Number(process.env.PORT || 5000);
 const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
@@ -15,6 +17,12 @@ const taxRate = Number(process.env.TAX_RATE || 0.18);
 
 app.use(cors());
 app.use(express.json());
+
+// Serve built React frontend (if present)
+const frontendDist = path.join(__dirname, "..", "..", "frontend", "dist");
+if (require("fs").existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+}
 
 function tokenFor(user) {
   return jwt.sign(
@@ -951,6 +959,12 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(400).json({ error: err.message || "Something went wrong" });
 });
+
+// Fallback: serve React app for any non-API route
+const frontendIndex = path.join(__dirname, "..", "..", "frontend", "dist", "index.html");
+if (require("fs").existsSync(frontendIndex)) {
+  app.get("*", (req, res) => res.sendFile(frontendIndex));
+}
 
 async function start() {
   await initDb();
