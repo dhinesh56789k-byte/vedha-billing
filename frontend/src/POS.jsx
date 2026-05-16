@@ -79,7 +79,7 @@ function BarcodeLabel({ value, height = 30 }) {
   x += quiet;
   const totalW = x;
   return (
-    <svg viewBox={`0 0 ${totalW} ${height + 12}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+    <svg viewBox={`0 0 ${totalW} ${height + 12}`} style={{ width: '100%', maxHeight: '11mm', display: 'block' }}>
       {bars.map((b, i) => <rect key={i} x={b.x} y={0} width={b.w} height={height} fill="#000" />)}
       <text x={totalW / 2} y={height + 9} textAnchor="middle" fontSize="8" fontFamily="monospace" fill="#000">{value}</text>
     </svg>

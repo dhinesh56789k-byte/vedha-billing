@@ -1707,16 +1707,17 @@ button:disabled {
   }
 
   .barcode-sheet-wrapper {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
+    display: block !important;
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+    padding-top: 3.5mm !important;
+    padding-left: 3.5mm !important;
     width: 210mm !important;
     height: 297mm !important; /* Full A4 size */
+    box-sizing: border-box !important;
   }
 
   /* 4 cols × 47mm + 3 gaps × 3mm = 197mm total width */
