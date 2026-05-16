@@ -356,6 +356,51 @@ export default function POS({ session, onLogout }) {
     }
   }
 
+  const downloadBarcodeAsPNG = (item) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 940;
+    canvas.height = 460;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+
+    const codes = encodeCode128(String(item.barcode));
+    const quiet = 6;
+    let x = quiet;
+    const bars = [];
+    codes.forEach(code => {
+      const pattern = String(CODE128_VALS[code] || 0).padStart(6, '0');
+      for (let i = 0; i < 6; i++) {
+        const w = parseInt(pattern[i]);
+        if (i % 2 === 0) bars.push({ x, w });
+        x += w;
+      }
+    });
+    x += quiet;
+    
+    const barcodeWidth = 840; 
+    const scaleX = barcodeWidth / x;
+    const startX = 50;
+    const barcodeY = 90;
+    const barcodeHeight = 220;
+
+    bars.forEach(b => {
+      ctx.fillRect(startX + b.x * scaleX, barcodeY, b.w * scaleX, barcodeHeight);
+    });
+
+    ctx.font = 'bold 50px monospace';
+    ctx.fillText(item.barcode, 470, 370);
+
+    const link = document.createElement('a');
+    link.download = `barcode_${item.barcode}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+
   const views = [
     ["pos", "Billing", ShoppingCart, true],
     ["dashboard", "Dashboard", BarChart3, true],
@@ -457,13 +502,10 @@ export default function POS({ session, onLogout }) {
           <div className="barcode-sheet-wrapper">
             <div className="barcode-sheet-grid">
               {Array.from({ length: barcodeCopies }).map((_, i) => (
-                <div key={i} className="barcode-sticker-cell">
-                  <span className="sticker-shop">VEDHA MOBILE</span>
-                  <span className="sticker-name">{printingBarcode.name}</span>
-                  <span className="sticker-barcode">
+                <div key={i} className="barcode-sticker-cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <span className="sticker-barcode" style={{ width: '100%' }}>
                     <BarcodeLabel value={printingBarcode.barcode} height={18} />
                   </span>
-                  <span className="sticker-price">{currency.format(printingBarcode.price)}</span>
                 </div>
               ))}
             </div>
@@ -550,24 +592,26 @@ export default function POS({ session, onLogout }) {
                 />
                 <button onClick={() => setBarcodeCopies(48)} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: '#1e3a5f', color: '#7dd3fc', border: 'none', cursor: 'pointer' }}>Full Sheet (48)</button>
               </div>
-              <button className="secondary-button" onClick={() => setPrintingBarcode(null)}>Close</button>
-              <button className="primary-button" onClick={() => {
-                setTimeout(() => {
-                  printReceipt(paper);
-                  setPrintingBarcode(null);
-                  setBarcodeCopies(1);
-                }, 150);
-              }}>Print {barcodeCopies > 1 ? `${barcodeCopies} Labels` : 'Label'}</button>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', width: '100%', marginTop: '8px' }}>
+                <button className="secondary-button" onClick={() => downloadBarcodeAsPNG(printingBarcode)} style={{ background: '#10b981', color: 'white', borderColor: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Download size={16} /> Save as PNG
+                </button>
+                <button className="secondary-button" onClick={() => setPrintingBarcode(null)}>Close</button>
+                <button className="primary-button" onClick={() => {
+                  setTimeout(() => {
+                    printReceipt(paper);
+                    setPrintingBarcode(null);
+                    setBarcodeCopies(1);
+                  }, 150);
+                }}>Print {barcodeCopies > 1 ? `${barcodeCopies} Labels` : 'Label'}</button>
+              </div>
             </div>
             {/* Preview of one label */}
             <div style={{ display: 'flex', justifyContent: 'center', padding: '20px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '12px' }}>
-              <div style={{ width: "47mm", height: "23mm", padding: "1mm 1.5mm", boxSizing: "border-box", textAlign: "center", background: "#fff", color: "#000", fontFamily: "Arial, sans-serif", display: "block", overflow: "hidden", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
-                <div style={{fontSize: '6.5px', fontWeight: '900', lineHeight: 1.2}}>VEDHA MOBILE</div>
-                <div style={{fontSize: '7.5px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2}}>{printingBarcode.name}</div>
+              <div style={{ width: "47mm", height: "23mm", padding: "1mm 1.5mm", boxSizing: "border-box", textAlign: "center", background: "#fff", color: "#000", fontFamily: "Arial, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
                 <div style={{width: '100%', lineHeight: 0}}>
-                  <BarcodeLabel value={printingBarcode.barcode} height={16} />
+                  <BarcodeLabel value={printingBarcode.barcode} height={18} />
                 </div>
-                <div style={{fontSize: '9px', fontWeight: '900', lineHeight: 1.2}}>{currency.format(printingBarcode.price)}</div>
               </div>
             </div>
             <div style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', marginTop: '8px' }}>
