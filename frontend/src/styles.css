@@ -1682,7 +1682,7 @@ button:disabled {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 3.5mm;
+    margin: 0;
   }
 
   /* Hide entire app UI, show only the sticker sheet */
@@ -1707,20 +1707,26 @@ button:disabled {
   }
 
   .barcode-sheet-wrapper {
-    display: block !important;
+    display: flex !important;
+    justify-content: center !important; /* Centers the whole block horizontally */
+    padding-top: 3.5mm !important; /* Forces exact 3.5mm from top */
     margin: 0 !important;
-    padding: 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
   }
 
   /* 4 cols × 47mm + 3 gaps × 3mm = 197mm total width */
+  /* 12 rows × 23mm = 276mm total height */
   .barcode-sheet-grid {
     display: grid !important;
     grid-template-columns: repeat(4, 47mm);
+    grid-template-rows: repeat(12, 23mm);
     column-gap: 3mm;
     row-gap: 0mm;
     margin: 0 !important;
     padding: 0 !important;
     width: 197mm;
+    height: 276mm;
   }
 
   .barcode-sticker-cell {
