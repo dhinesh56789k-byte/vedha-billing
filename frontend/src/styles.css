@@ -1681,7 +1681,7 @@ button:disabled {
 /* Border margin: 3.5mm all sides | Column gap: 3mm              */
 @media print {
   @page {
-    size: A4 portrait;
+    size: 204mm 283mm;
     margin: 0;
   }
 
@@ -1713,10 +1713,10 @@ button:disabled {
     left: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
-    padding-top: 10.5mm !important;
-    padding-left: 6.5mm !important;
-    width: 210mm !important;
-    height: 297mm !important; /* Full A4 size */
+    padding-top: 3.5mm !important;
+    padding-left: 3.5mm !important;
+    width: 204mm !important;
+    height: 283mm !important; /* Exact paper size for 4-side 3.5mm margin */
     box-sizing: border-box !important;
   }
 
