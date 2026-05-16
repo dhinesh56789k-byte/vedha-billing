@@ -1675,3 +1675,102 @@ button:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── Barcode A4 Sticker Sheet Print ─────────────────────────── */
+/* Sheet: 4 cols × 12 rows | Each sticker: 47mm × 23mm          */
+/* Border margin: 3.5mm all sides | Column gap: 3mm              */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 3.5mm;
+  }
+
+  /* Hide entire app UI, show only the sticker sheet */
+  .app-shell > *,
+  .workspace > *,
+  .pos-layout > *,
+  .cart-panel > * {
+    display: none !important;
+  }
+
+  [class*="paper-"] {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .barcode-sheet-wrapper {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 4 cols × 47mm + 3 gaps × 3mm = 197mm total width */
+  .barcode-sheet-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 47mm);
+    column-gap: 3mm;
+    row-gap: 0mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 197mm;
+  }
+
+  .barcode-sticker-cell {
+    width: 47mm;
+    height: 23mm;
+    overflow: hidden;
+    text-align: center;
+    padding: 0.8mm 1mm;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    display: block;
+  }
+
+  .barcode-sticker-cell .sticker-shop {
+    font-size: 6.5px;
+    font-weight: 900;
+    font-family: Arial, sans-serif;
+    color: #000;
+    line-height: 1.2;
+    display: block;
+    margin-bottom: 0.3mm;
+  }
+
+  .barcode-sticker-cell .sticker-name {
+    font-size: 7px;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    color: #000;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    line-height: 1.2;
+    margin-bottom: 0.3mm;
+  }
+
+  .barcode-sticker-cell .sticker-barcode {
+    display: block;
+    width: 100%;
+    line-height: 0;
+  }
+
+  .barcode-sticker-cell .sticker-price {
+    font-size: 8.5px;
+    font-weight: 900;
+    font-family: Arial, sans-serif;
+    color: #000;
+    display: block;
+    line-height: 1.2;
+    margin-top: 0.3mm;
+  }
+}

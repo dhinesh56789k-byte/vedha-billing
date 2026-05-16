@@ -61,27 +61,27 @@ function encodeCode128(text) {
   return codes;
 }
 
-function BarcodeLabel({ value, height = 40 }) {
+function BarcodeLabel({ value, height = 30 }) {
   if (!value) return null;
   const codes = encodeCode128(String(value));
   const bars = [];
   let x = 0;
-  const quiet = 10;
+  const quiet = 6;
   x += quiet;
   codes.forEach(code => {
     const pattern = String(CODE128_VALS[code] || 0).padStart(6, '0');
     for (let i = 0; i < 6; i++) {
       const w = parseInt(pattern[i]);
-      if (i % 2 === 0) bars.push({ x, w }); // bar
+      if (i % 2 === 0) bars.push({ x, w });
       x += w;
     }
   });
   x += quiet;
   const totalW = x;
   return (
-    <svg width={totalW} height={height + 14} viewBox={`0 0 ${totalW} ${height + 14}`} style={{ maxWidth: '100%' }}>
+    <svg viewBox={`0 0 ${totalW} ${height + 12}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
       {bars.map((b, i) => <rect key={i} x={b.x} y={0} width={b.w} height={height} fill="#000" />)}
-      <text x={totalW / 2} y={height + 11} textAnchor="middle" fontSize="9" fontFamily="monospace" fill="#000">{value}</text>
+      <text x={totalW / 2} y={height + 9} textAnchor="middle" fontSize="8" fontFamily="monospace" fill="#000">{value}</text>
     </svg>
   );
 }
@@ -454,16 +454,20 @@ export default function POS({ session, onLogout }) {
       {/* The hidden receipt that actually gets printed by the browser window.print() */}
       <div className={`paper-${paper}`}>
         {printingBarcode ? (
-          Array.from({ length: barcodeCopies }).map((_, i) => (
-            <section key={i} className="receipt-print" style={{ width: "50mm", height: "25mm", margin: "0", padding: "1mm 2mm", boxSizing: "border-box", textAlign: "center", background: "#fff", color: "#000", fontFamily: "Arial, sans-serif", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", pageBreakAfter: "always" }}>
-               <div style={{fontSize: '8px', fontWeight: '900'}}>VEDHA MOBILE</div>
-               <div style={{fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{printingBarcode.name}</div>
-               <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '1px 0'}}>
-                 <BarcodeLabel value={printingBarcode.barcode} width={1} height={20} fontSize={10} />
-               </div>
-               <div style={{fontSize: '11px', fontWeight: '900'}}>{currency.format(printingBarcode.price)}</div>
-            </section>
-          ))
+          <div className="barcode-sheet-wrapper">
+            <div className="barcode-sheet-grid">
+              {Array.from({ length: barcodeCopies }).map((_, i) => (
+                <div key={i} className="barcode-sticker-cell">
+                  <span className="sticker-shop">VEDHA MOBILE</span>
+                  <span className="sticker-name">{printingBarcode.name}</span>
+                  <span className="sticker-barcode">
+                    <BarcodeLabel value={printingBarcode.barcode} height={18} />
+                  </span>
+                  <span className="sticker-price">{currency.format(printingBarcode.price)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : (
           <Receipt
             paper={paper}
@@ -528,37 +532,46 @@ export default function POS({ session, onLogout }) {
       {/* Barcode Print Preview Modal */}
       {printingBarcode && (
         <div className="preview-modal-overlay" style={{ zIndex: 9999 }}>
-          <div className="preview-modal-content" style={{ width: '320px' }}>
+          <div className="preview-modal-content" style={{ width: '340px' }}>
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontWeight: '700', fontSize: '15px', marginBottom: '4px' }}>🖨️ Print Barcode Labels</div>
+              <div style={{ fontSize: '12px', color: '#94a3b8' }}>A4 Sheet: 4 columns × 12 rows = 48 labels per sheet</div>
+            </div>
             <div className="preview-modal-actions" style={{ flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '150px' }}>
                 <span style={{ fontSize: '13px', fontWeight: '500' }}>Copies:</span>
-                <input 
-                  type="number" 
-                  min="1" 
-                  max="500" 
-                  value={barcodeCopies} 
+                <input
+                  type="number"
+                  min="1"
+                  max="480"
+                  value={barcodeCopies}
                   onChange={(e) => setBarcodeCopies(Math.max(1, parseInt(e.target.value) || 1))}
                   style={{ width: '60px', padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
                 />
+                <button onClick={() => setBarcodeCopies(48)} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: '#1e3a5f', color: '#7dd3fc', border: 'none', cursor: 'pointer' }}>Full Sheet (48)</button>
               </div>
               <button className="secondary-button" onClick={() => setPrintingBarcode(null)}>Close</button>
               <button className="primary-button" onClick={() => {
                 setTimeout(() => {
                   printReceipt(paper);
                   setPrintingBarcode(null);
-                  setBarcodeCopies(1); // Reset copies after printing
+                  setBarcodeCopies(1);
                 }, 150);
               }}>Print {barcodeCopies > 1 ? `${barcodeCopies} Labels` : 'Label'}</button>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '20px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ width: "50mm", height: "25mm", padding: "1mm 2mm", boxSizing: "border-box", textAlign: "center", background: "#fff", color: "#000", fontFamily: "Arial, sans-serif", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
-                <div style={{fontSize: '8px', fontWeight: '900'}}>VEDHA MOBILE</div>
-                <div style={{fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{printingBarcode.name}</div>
-                <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '1px 0'}}>
-                  <BarcodeLabel value={printingBarcode.barcode} width={1} height={20} fontSize={10} />
+            {/* Preview of one label */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '20px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '12px' }}>
+              <div style={{ width: "47mm", height: "23mm", padding: "1mm 1.5mm", boxSizing: "border-box", textAlign: "center", background: "#fff", color: "#000", fontFamily: "Arial, sans-serif", display: "block", overflow: "hidden", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
+                <div style={{fontSize: '6.5px', fontWeight: '900', lineHeight: 1.2}}>VEDHA MOBILE</div>
+                <div style={{fontSize: '7.5px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2}}>{printingBarcode.name}</div>
+                <div style={{width: '100%', lineHeight: 0}}>
+                  <BarcodeLabel value={printingBarcode.barcode} height={16} />
                 </div>
-                <div style={{fontSize: '11px', fontWeight: '900'}}>{currency.format(printingBarcode.price)}</div>
+                <div style={{fontSize: '9px', fontWeight: '900', lineHeight: 1.2}}>{currency.format(printingBarcode.price)}</div>
               </div>
+            </div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', marginTop: '8px' }}>
+              Preview of 1 label (actual size: 47mm × 23mm)
             </div>
           </div>
         </div>
