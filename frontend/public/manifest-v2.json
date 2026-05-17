@@ -1,0 +1,16 @@
+{
+  "name": "Vedha Mobile Billing System",
+  "short_name": "Vedha Billing",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/vm-logo-square.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
