@@ -79,9 +79,9 @@ function BarcodeLabel({ value, height = 30 }) {
   x += quiet;
   const totalW = x;
   return (
-    <svg viewBox={`0 0 ${totalW} ${height + 12}`} style={{ width: '100%', maxHeight: '11mm', display: 'block' }}>
+    <svg viewBox={`0 0 ${totalW} ${showText ? height + 12 : height}`} style={{ width: '100%', maxHeight: '11mm', display: 'block' }}>
       {bars.map((b, i) => <rect key={i} x={b.x} y={0} width={b.w} height={height} fill="#000" />)}
-      <text x={totalW / 2} y={height + 9} textAnchor="middle" fontSize="8" fontFamily="monospace" fill="#000">{value}</text>
+      {showText && <text x={totalW / 2} y={height + 9} textAnchor="middle" fontSize="8" fontFamily="monospace" fill="#000">{value}</text>}
     </svg>
   );
 }
@@ -365,8 +365,12 @@ export default function POS({ session, onLogout }) {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = '#000000';
+    // Header
+    ctx.fillStyle = '#ff0000';
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = '900 64px Arial';
+    ctx.fillText('VEDHA MOBILE', 470, 70);
 
     const codes = encodeCode128(String(item.barcode));
     const quiet = 6;
@@ -382,18 +386,45 @@ export default function POS({ session, onLogout }) {
     });
     x += quiet;
     
-    const barcodeWidth = 840; 
+    const barcodeWidth = 800; 
     const scaleX = barcodeWidth / x;
-    const startX = 50;
-    const barcodeY = 90;
-    const barcodeHeight = 220;
+    const startX = 70;
+    const barcodeY = 100;
+    const barcodeHeight = 200;
 
+    ctx.fillStyle = '#000000';
     bars.forEach(b => {
       ctx.fillRect(startX + b.x * scaleX, barcodeY, b.w * scaleX, barcodeHeight);
     });
 
-    ctx.font = 'bold 50px monospace';
-    ctx.fillText(item.barcode, 470, 370);
+    // Left: Product Name (wrapped)
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = 'bold 28px Arial';
+    const words = item.name.split(' ');
+    let line = '';
+    let currentY = 320;
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + words[i] + ' ';
+      if (ctx.measureText(testLine).width > 350 && i > 0) {
+        ctx.fillText(line, 40, currentY);
+        line = words[i] + ' ';
+        currentY += 35;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, 40, currentY);
+
+    // Center: Barcode Number
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 36px Arial';
+    ctx.fillText(item.barcode, 470, 320);
+
+    // Right: Price
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 48px Arial';
+    ctx.fillText(currency.format(item.price), 900, 350);
 
     const link = document.createElement('a');
     link.download = `barcode_${item.barcode}.png`;
@@ -502,10 +533,16 @@ export default function POS({ session, onLogout }) {
           <div className="barcode-sheet-wrapper">
             <div className="barcode-sheet-grid">
               {Array.from({ length: barcodeCopies }).map((_, i) => (
-                <div key={i} className="barcode-sticker-cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                  <span className="sticker-barcode" style={{ width: '100%' }}>
-                    <BarcodeLabel value={printingBarcode.barcode} height={18} />
-                  </span>
+                <div key={i} className="barcode-sticker-cell" style={{ display: 'flex', flexDirection: 'column', padding: '1mm', boxSizing: 'border-box', background: '#fff', overflow: 'hidden', fontFamily: 'sans-serif', height: '100%', justifyContent: 'space-between' }}>
+                  <div style={{ textAlign: 'center', color: 'red', fontWeight: '900', fontSize: '7px', letterSpacing: '0.2px' }}>VEDHA MOBILE</div>
+                  <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <BarcodeLabel value={printingBarcode.barcode} height={18} showText={false} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', fontSize: '5px', fontWeight: 'bold', color: '#000' }}>
+                    <div style={{ textAlign: 'left', width: '35%', lineHeight: 1.1, overflow: 'hidden', maxHeight: '18px' }}>{printingBarcode.name}</div>
+                    <div style={{ textAlign: 'center', width: '30%', fontSize: '6px' }}>{printingBarcode.barcode}</div>
+                    <div style={{ textAlign: 'right', width: '35%', fontSize: '6.5px' }}>{currency.format(printingBarcode.price)}</div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -608,9 +645,15 @@ export default function POS({ session, onLogout }) {
             </div>
             {/* Preview of one label */}
             <div style={{ display: 'flex', justifyContent: 'center', padding: '20px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '12px' }}>
-              <div style={{ width: "47mm", height: "23mm", padding: "1mm 1.5mm", boxSizing: "border-box", textAlign: "center", background: "#fff", color: "#000", fontFamily: "Arial, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
-                <div style={{width: '100%', lineHeight: 0}}>
-                  <BarcodeLabel value={printingBarcode.barcode} height={18} />
+              <div style={{ width: "47mm", height: "23mm", padding: "1mm", boxSizing: "border-box", textAlign: "center", background: "#fff", color: "#000", fontFamily: "sans-serif", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
+                <div style={{ textAlign: 'center', color: 'red', fontWeight: '900', fontSize: '7px', letterSpacing: '0.2px' }}>VEDHA MOBILE</div>
+                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <BarcodeLabel value={printingBarcode.barcode} height={18} showText={false} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', fontSize: '5px', fontWeight: 'bold' }}>
+                  <div style={{ textAlign: 'left', width: '35%', lineHeight: 1.1, overflow: 'hidden', maxHeight: '18px' }}>{printingBarcode.name}</div>
+                  <div style={{ textAlign: 'center', width: '30%', fontSize: '6px' }}>{printingBarcode.barcode}</div>
+                  <div style={{ textAlign: 'right', width: '35%', fontSize: '6.5px' }}>{currency.format(printingBarcode.price)}</div>
                 </div>
               </div>
             </div>
