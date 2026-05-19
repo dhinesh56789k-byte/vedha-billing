@@ -61,7 +61,7 @@ function encodeCode128(text) {
   return codes;
 }
 
-function BarcodeLabel({ value, height = 30 }) {
+function BarcodeLabel({ value, height = 30, showText = true }) {
   if (!value) return null;
   const codes = encodeCode128(String(value));
   const bars = [];
