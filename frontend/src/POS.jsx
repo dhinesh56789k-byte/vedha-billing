@@ -582,14 +582,36 @@ export default function POS({ session, onLogout }) {
               <button
                 className="secondary-button"
                 onClick={async () => {
-                  if (!receiptRef.current || !window.posPrinter?.captureReceiptPng) return;
+                  if (!receiptRef.current) return;
                   setCapturingPng(true);
                   try {
-                    const rect = receiptRef.current.getBoundingClientRect();
-                    await window.posPrinter.captureReceiptPng({
-                      x: rect.left, y: rect.top,
-                      width: rect.width, height: rect.height
-                    });
+                    if (window.posPrinter?.captureReceiptPng) {
+                      const rect = receiptRef.current.getBoundingClientRect();
+                      await window.posPrinter.captureReceiptPng({
+                        x: rect.left, y: rect.top,
+                        width: rect.width, height: rect.height
+                      });
+                    } else {
+                      // Web browser fallback
+                      let html2canvas = window.html2canvas;
+                      if (!html2canvas) {
+                        await new Promise((resolve, reject) => {
+                          const script = document.createElement('script');
+                          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                          script.onload = resolve;
+                          script.onerror = reject;
+                          document.head.appendChild(script);
+                        });
+                        html2canvas = window.html2canvas;
+                      }
+                      const canvas = await html2canvas(receiptRef.current, { scale: 2 });
+                      const link = document.createElement('a');
+                      link.download = `Receipt_${receipt.billNumber || 'preview'}.png`;
+                      link.href = canvas.toDataURL('image/png');
+                      link.click();
+                    }
+                  } catch (e) {
+                    console.error(e);
                   } finally {
                     setCapturingPng(false);
                   }
