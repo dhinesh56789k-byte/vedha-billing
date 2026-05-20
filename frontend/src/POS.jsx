@@ -400,7 +400,7 @@ export default function POS({ session, onLogout }) {
     // Left: Product Name (wrapped)
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.font = 'bold 28px Arial';
+    ctx.font = '900 36px Arial';
     const words = item.name.split(' ');
     let line = '';
     let currentY = 320;
@@ -539,7 +539,7 @@ export default function POS({ session, onLogout }) {
                     <BarcodeLabel value={printingBarcode.barcode} height={18} showText={false} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', fontSize: '5px', fontWeight: 'bold', color: '#000' }}>
-                    <div style={{ textAlign: 'left', width: '35%', lineHeight: 1.1, overflow: 'hidden', maxHeight: '18px' }}>{printingBarcode.name}</div>
+                    <div style={{ textAlign: 'left', width: '35%', lineHeight: 1.1, overflow: 'hidden', maxHeight: '18px', fontSize: '7px', fontWeight: '900' }}>{printingBarcode.name}</div>
                     <div style={{ textAlign: 'center', width: '30%', fontSize: '6px' }}>{printingBarcode.barcode}</div>
                     <div style={{ textAlign: 'right', width: '35%', fontSize: '6.5px' }}>{currency.format(printingBarcode.price)}</div>
                   </div>
@@ -651,7 +651,7 @@ export default function POS({ session, onLogout }) {
                   <BarcodeLabel value={printingBarcode.barcode} height={18} showText={false} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', fontSize: '5px', fontWeight: 'bold' }}>
-                  <div style={{ textAlign: 'left', width: '35%', lineHeight: 1.1, overflow: 'hidden', maxHeight: '18px' }}>{printingBarcode.name}</div>
+                  <div style={{ textAlign: 'left', width: '35%', lineHeight: 1.1, overflow: 'hidden', maxHeight: '18px', fontSize: '7px', fontWeight: '900' }}>{printingBarcode.name}</div>
                   <div style={{ textAlign: 'center', width: '30%', fontSize: '6px' }}>{printingBarcode.barcode}</div>
                   <div style={{ textAlign: 'right', width: '35%', fontSize: '6.5px' }}>{currency.format(printingBarcode.price)}</div>
                 </div>
