@@ -369,7 +369,7 @@ export default function POS({ session, onLogout }) {
     ctx.fillStyle = '#ff0000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.font = '900 80px Arial';
+    ctx.font = '900 100px "Arial Black", Arial';
     ctx.fillText('VEDHA MOBILE SERVICE', 470, 100);
 
     const codes = encodeCode128(String(item.barcode));
@@ -534,7 +534,7 @@ export default function POS({ session, onLogout }) {
             <div className="barcode-sheet-grid">
               {Array.from({ length: barcodeCopies }).map((_, i) => (
                 <div key={i} className="barcode-sticker-cell" style={{ display: 'flex', flexDirection: 'column', padding: '1mm', boxSizing: 'border-box', background: '#fff', overflow: 'hidden', fontFamily: 'sans-serif', height: '100%', justifyContent: 'space-between' }}>
-                  <div style={{ textAlign: 'center', color: 'red', fontWeight: '900', fontSize: '9px', letterSpacing: '0.2px' }}>VEDHA MOBILE SERVICE</div>
+                  <div style={{ textAlign: 'center', color: 'red', fontWeight: '900', fontSize: '12px', fontFamily: '"Arial Black", Arial, sans-serif', letterSpacing: '0px' }}>VEDHA MOBILE SERVICE</div>
                   <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     <BarcodeLabel value={printingBarcode.barcode} height={18} showText={false} />
                   </div>
@@ -646,7 +646,7 @@ export default function POS({ session, onLogout }) {
             {/* Preview of one label */}
             <div style={{ display: 'flex', justifyContent: 'center', padding: '20px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '12px' }}>
               <div style={{ width: "47mm", height: "23mm", padding: "1mm", boxSizing: "border-box", textAlign: "center", background: "#fff", color: "#000", fontFamily: "sans-serif", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
-                <div style={{ textAlign: 'center', color: 'red', fontWeight: '900', fontSize: '9px', letterSpacing: '0.2px' }}>VEDHA MOBILE SERVICE</div>
+                <div style={{ textAlign: 'center', color: 'red', fontWeight: '900', fontSize: '12px', fontFamily: '"Arial Black", Arial, sans-serif', letterSpacing: '0px' }}>VEDHA MOBILE SERVICE</div>
                 <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   <BarcodeLabel value={printingBarcode.barcode} height={18} showText={false} />
                 </div>
