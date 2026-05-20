@@ -369,8 +369,8 @@ export default function POS({ session, onLogout }) {
     ctx.fillStyle = '#ff0000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.font = '900 100px "Arial Black", Arial';
-    ctx.fillText('VEDHA MOBILE SERVICE', 470, 100);
+    ctx.font = '900 70px "Arial Black", Arial';
+    ctx.fillText('VEDHA MOBILE SERVICE', 470, 80);
 
     const codes = encodeCode128(String(item.barcode));
     const quiet = 6;
@@ -397,34 +397,41 @@ export default function POS({ session, onLogout }) {
       ctx.fillRect(startX + b.x * scaleX, barcodeY, b.w * scaleX, barcodeHeight);
     });
 
-    // Left: Product Name (wrapped)
+    // Left: Product Name (wrapped, max 3 lines)
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.font = 'bold 28px Arial';
     const words = item.name.split(' ');
     let line = '';
     let currentY = 320;
+    let linesDrawn = 0;
     for (let i = 0; i < words.length; i++) {
+      if (linesDrawn >= 3) break;
       const testLine = line + words[i] + ' ';
-      if (ctx.measureText(testLine).width > 350 && i > 0) {
+      if (ctx.measureText(testLine).width > 300 && i > 0) {
         ctx.fillText(line, 40, currentY);
         line = words[i] + ' ';
-        currentY += 35;
+        currentY += 32;
+        linesDrawn++;
       } else {
         line = testLine;
       }
     }
-    ctx.fillText(line, 40, currentY);
+    if (linesDrawn < 3) {
+      ctx.fillText(line, 40, currentY);
+    }
 
     // Center: Barcode Number
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
     ctx.font = 'bold 36px Arial';
     ctx.fillText(item.barcode, 470, 320);
 
     // Right: Price
     ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
     ctx.font = 'bold 48px Arial';
-    ctx.fillText(currency.format(item.price), 900, 350);
+    ctx.fillText(currency.format(item.price), 900, 315);
 
     const link = document.createElement('a');
     link.download = `barcode_${item.barcode}.png`;
