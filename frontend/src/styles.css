@@ -1681,7 +1681,7 @@ button:disabled {
 /* Border margin: 3.5mm all sides | Column gap: 3mm              */
 @media print {
   @page {
-    size: 204mm 283mm;
+    size: 210mm 297mm;
     margin: 0;
   }
 
@@ -1714,9 +1714,9 @@ button:disabled {
     margin: 0 !important;
     padding: 0 !important;
     padding-top: 3.5mm !important;
-    padding-left: 3.5mm !important;
-    width: 204mm !important;
-    height: 283mm !important; /* Exact paper size for 4-side 3.5mm margin */
+    padding-left: 6.5mm !important; /* Centered for A4 (210 - 197)/2 */
+    width: 210mm !important;
+    height: 297mm !important; /* Exact A4 paper size */
     box-sizing: border-box !important;
   }
 
@@ -1727,7 +1727,7 @@ button:disabled {
     grid-template-columns: repeat(4, 47mm);
     grid-template-rows: repeat(12, 23mm);
     column-gap: 3mm;
-    row-gap: 1.1mm;
+    row-gap: 0mm;
     margin: 0 !important;
     padding: 0 !important;
     width: 197mm;
