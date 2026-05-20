@@ -369,8 +369,8 @@ export default function POS({ session, onLogout }) {
     ctx.fillStyle = '#ff0000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.font = '900 70px "Arial Black", Arial';
-    ctx.fillText('VEDHA MOBILE SERVICE', 470, 80);
+    ctx.font = '900 55px "Arial Black", Arial';
+    ctx.fillText('VEDHA MOBILE SERVICE', 470, 75);
 
     const codes = encodeCode128(String(item.barcode));
     const quiet = 6;
@@ -386,9 +386,9 @@ export default function POS({ session, onLogout }) {
     });
     x += quiet;
     
-    const barcodeWidth = 800; 
+    const barcodeWidth = 760; 
     const scaleX = barcodeWidth / x;
-    const startX = 70;
+    const startX = 90;
     const barcodeY = 100;
     const barcodeHeight = 200;
 
@@ -400,38 +400,38 @@ export default function POS({ session, onLogout }) {
     // Left: Product Name (wrapped, max 3 lines)
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.font = 'bold 28px Arial';
+    ctx.font = 'bold 24px Arial';
     const words = item.name.split(' ');
     let line = '';
-    let currentY = 320;
+    let currentY = 325;
     let linesDrawn = 0;
     for (let i = 0; i < words.length; i++) {
       if (linesDrawn >= 3) break;
       const testLine = line + words[i] + ' ';
-      if (ctx.measureText(testLine).width > 300 && i > 0) {
-        ctx.fillText(line, 40, currentY);
+      if (ctx.measureText(testLine).width > 280 && i > 0) {
+        ctx.fillText(line, 60, currentY);
         line = words[i] + ' ';
-        currentY += 32;
+        currentY += 28;
         linesDrawn++;
       } else {
         line = testLine;
       }
     }
     if (linesDrawn < 3) {
-      ctx.fillText(line, 40, currentY);
+      ctx.fillText(line, 60, currentY);
     }
 
     // Center: Barcode Number
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.font = 'bold 36px Arial';
-    ctx.fillText(item.barcode, 470, 320);
+    ctx.fillText(item.barcode, 470, 325);
 
     // Right: Price
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
-    ctx.font = 'bold 48px Arial';
-    ctx.fillText(currency.format(item.price), 900, 315);
+    ctx.font = 'bold 40px Arial';
+    ctx.fillText(currency.format(item.price), 880, 325);
 
     const link = document.createElement('a');
     link.download = `barcode_${item.barcode}.png`;
