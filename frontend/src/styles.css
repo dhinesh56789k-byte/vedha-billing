@@ -1727,7 +1727,7 @@ button:disabled {
     grid-template-columns: repeat(4, 47mm);
     grid-template-rows: repeat(12, 23mm);
     column-gap: 2.5mm;
-    row-gap: 0.5mm;
+    row-gap: 0mm;
     margin: 0 !important;
     padding: 0 !important;
   }
