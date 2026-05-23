@@ -1713,10 +1713,10 @@ button:disabled {
     left: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
-    padding-top: 7.75mm !important; /* (297 - 281.5) / 2 */
-    padding-bottom: 7.75mm !important;
-    padding-left: 7.25mm !important; /* (210 - 195.5) / 2 */
-    padding-right: 7.25mm !important;
+    padding-top: 4mm !important;
+    padding-bottom: 4mm !important;
+    padding-left: 3.5mm !important;
+    padding-right: 3.5mm !important;
     width: 210mm !important;
     height: 297mm !important;
     box-sizing: border-box !important;
