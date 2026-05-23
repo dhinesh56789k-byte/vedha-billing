@@ -697,7 +697,7 @@ body{background:#fff;}
 .bottom-row{display:flex;justify-content:space-between;align-items:flex-end;font-size:4pt;font-weight:bold;color:#000;}
 .prod-name{width:35%;text-align:left;word-break:break-word;}
 .prod-barcode{width:30%;text-align:center;font-size:4pt;}
-.prod-price{width:35%;text-align:right;font-size:4.5pt;}
+.prod-price{width:35%;text-align:right;font-size:4.5pt;font-weight:900;}
 </style></head><body><div class="grid">${cells}</div>
 <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</script>
 </body></html>`;
