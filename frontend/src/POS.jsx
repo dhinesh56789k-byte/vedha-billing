@@ -687,11 +687,11 @@ export default function POS({ session, onLogout }) {
                     cells += `<div class="sticker"><div class="shop-name">VEDHA MOBILE SERVICE</div><div class="barcode-wrap">${svgStr}</div><div class="bottom-row"><span class="prod-name">${name}</span><span class="prod-barcode">${barcode}</span><span class="prod-price">${price}</span></div></div>`;
                   }
                   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
-@page{size:210mm 297mm;margin-top:4mm;margin-bottom:0;margin-left:3.5mm;margin-right:0;}
+@page{size:210mm 297mm;margin-top:4mm;margin-bottom:4mm;margin-left:4mm;margin-right:4mm;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#fff;}
-.grid{display:grid;grid-template-columns:repeat(4,47mm);grid-template-rows:repeat(12,23mm);column-gap:2.5mm;row-gap:0mm;}
-.sticker{width:47mm;height:23mm;overflow:hidden;padding:0.8mm 1mm;display:flex;flex-direction:column;justify-content:space-between;font-family:Arial,sans-serif;background:#fff;}
+.grid{display:grid;grid-template-columns:repeat(4,47.5mm);grid-template-rows:repeat(12,23.5mm);column-gap:3mm;row-gap:0.5mm;}
+.sticker{width:47.5mm;height:23.5mm;overflow:hidden;padding:0.8mm 1mm;display:flex;flex-direction:column;justify-content:space-between;font-family:Arial,sans-serif;background:#fff;}
 .shop-name{text-align:center;color:red;font-weight:900;font-size:7.5pt;font-family:"Arial Black",Arial,sans-serif;white-space:nowrap;overflow:hidden;}
 .barcode-wrap{width:100%;display:flex;justify-content:center;}
 .bottom-row{display:flex;justify-content:space-between;align-items:flex-end;font-size:5pt;font-weight:bold;color:#000;}
