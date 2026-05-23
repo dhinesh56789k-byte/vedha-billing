@@ -1682,7 +1682,10 @@ button:disabled {
 @media print {
   @page {
     size: 210mm 297mm;
-    margin: 0;
+    margin-top: 4mm;
+    margin-bottom: 4mm;
+    margin-left: 3.5mm;
+    margin-right: 3.5mm;
   }
 
   /* Hide entire app UI, show only the sticker sheet */
@@ -1708,11 +1711,10 @@ button:disabled {
 
   .barcode-sheet-wrapper {
     display: block !important;
-    position: relative !important;
+    position: static !important;
     margin: 0 !important;
-    padding: 4mm 3.5mm !important;
-    width: 210mm !important;
-    min-height: 297mm !important;
+    padding: 0 !important;
+    width: 100% !important;
     box-sizing: border-box !important;
     background: #fff !important;
   }
