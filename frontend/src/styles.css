@@ -1681,7 +1681,7 @@ button:disabled {
 /* Border margin: 3.5mm all sides | Column gap: 3mm              */
 @media print {
   @page {
-    size: 202.5mm 284mm;
+    size: 210mm 297mm;
     margin: 0;
   }
 
@@ -1713,8 +1713,12 @@ button:disabled {
     left: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
+    padding-top: 4mm !important;
+    padding-bottom: 4mm !important;
+    padding-left: 3.5mm !important;
+    padding-right: 3.5mm !important;
+    width: 210mm !important;
+    height: 297mm !important;
     box-sizing: border-box !important;
   }
 
@@ -1723,7 +1727,7 @@ button:disabled {
     grid-template-columns: repeat(4, 47mm);
     grid-template-rows: repeat(12, 23mm);
     column-gap: 2.5mm;
-    row-gap: 0mm;
+    row-gap: 0.5mm;
     margin: 0 !important;
     padding: 0 !important;
   }
