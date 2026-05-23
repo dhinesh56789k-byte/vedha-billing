@@ -1125,7 +1125,113 @@ function ProductsAdmin({ products, categories, reload, setMessage, isAdmin, setP
           product.stock,
           <span className="row-actions" key={product.id}>
             {product.barcode && (
-              <button onClick={() => setPrintingBarcode(product)} title="Print Barcode Label"><Printer size={15} /></button>
+              <button onClick={() => {
+                // Build barcode SVG
+                const codes = encodeCode128(String(product.barcode));
+                const bars = [];
+                let bx = 6;
+                codes.forEach(code => {
+                  const pattern = String(CODE128_VALS[code] || 0).padStart(6, '0');
+                  for (let i = 0; i < 6; i++) {
+                    const w = parseInt(pattern[i]);
+                    if (i % 2 === 0) bars.push({ x: bx, w });
+                    bx += w;
+                  }
+                });
+                bx += 6;
+                const svgBars = bars.map((b, i) =>
+                  `<rect x="${b.x}" y="0" width="${b.w}" height="30" fill="#000"/>`
+                ).join('');
+                const svgStr = `<svg viewBox="0 0 ${bx} 30" style="width:100%;height:11mm;display:block">${svgBars}</svg>`;
+
+                const name = product.name || '';
+                const barcode = product.barcode || '';
+                const price = currency.format(product.price);
+
+                // Build 48 sticker cells
+                let cells = '';
+                for (let i = 0; i < 48; i++) {
+                  cells += `
+                    <div class="sticker">
+                      <div class="shop-name">VEDHA MOBILE SERVICE</div>
+                      <div class="barcode-wrap">${svgStr}</div>
+                      <div class="bottom-row">
+                        <span class="prod-name">${name}</span>
+                        <span class="prod-barcode">${barcode}</span>
+                        <span class="prod-price">${price}</span>
+                      </div>
+                    </div>`;
+                }
+
+                const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  @page {
+    size: 210mm 297mm;
+    margin-top: 4mm;
+    margin-bottom: 4mm;
+    margin-left: 3.5mm;
+    margin-right: 3.5mm;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #fff; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 47mm);
+    grid-template-rows: repeat(12, 23mm);
+    column-gap: 2.5mm;
+    row-gap: 0mm;
+  }
+  .sticker {
+    width: 47mm;
+    height: 23mm;
+    overflow: hidden;
+    padding: 0.8mm 1mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-family: Arial, sans-serif;
+    background: #fff;
+  }
+  .shop-name {
+    text-align: center;
+    color: red;
+    font-weight: 900;
+    font-size: 7.5pt;
+    font-family: "Arial Black", Arial, sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .barcode-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: 5pt;
+    font-weight: bold;
+    color: #000;
+  }
+  .prod-name { width: 35%; text-align: left; word-break: break-word; }
+  .prod-barcode { width: 30%; text-align: center; font-size: 5.5pt; }
+  .prod-price { width: 35%; text-align: right; font-size: 6pt; }
+</style>
+</head>
+<body>
+<div class="grid">${cells}</div>
+<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</script>
+</body>
+</html>`;
+
+                const w = window.open('', '_blank', 'width=900,height=700');
+                w.document.write(html);
+                w.document.close();
+              }} title="Print Barcode Label"><Printer size={15} /></button>
             )}
             <button onClick={() => edit(product)} title="Edit"><Pencil size={15} /></button>
             {isAdmin && (
