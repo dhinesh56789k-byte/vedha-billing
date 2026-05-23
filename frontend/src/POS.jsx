@@ -701,9 +701,15 @@ body{background:#fff;}
 </style></head><body><div class="grid">${cells}</div>
 <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</script>
 </body></html>`;
-                  const w = window.open('', '_blank', 'width=900,height=700');
-                  w.document.write(html);
-                  w.document.close();
+                  const blob = new Blob([html], { type: 'text/html' });
+                  const blobUrl = URL.createObjectURL(blob);
+                  const w = window.open(blobUrl, '_blank', 'width=900,height=700');
+                  if (!w) {
+                    alert('Popup blocked! Please allow popups for this site:\n\nClick the popup icon in your address bar and select "Always allow popups"');
+                    URL.revokeObjectURL(blobUrl);
+                  } else {
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+                  }
                   setPrintingBarcode(null);
                   setBarcodeCopies(1);
                 }}>Print {barcodeCopies > 1 ? `${barcodeCopies} Labels` : 'Label'}</button>
