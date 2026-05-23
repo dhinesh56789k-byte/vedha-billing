@@ -1713,25 +1713,19 @@ button:disabled {
     left: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
-    padding-top: 4mm !important;
-    padding-left: 3.5mm !important;
-    width: 202.5mm !important;
-    height: 284mm !important; 
+    width: 100% !important;
+    height: 100% !important;
     box-sizing: border-box !important;
   }
 
-  /* 4 cols × 47mm + 3 gaps × 2.5mm = 188 + 7.5 = 195.5mm total width */
-  /* 12 rows × 23mm = 276mm total height */
   .barcode-sheet-grid {
     display: grid !important;
     grid-template-columns: repeat(4, 47mm);
     grid-template-rows: repeat(12, 23mm);
     column-gap: 2.5mm;
-    row-gap: 0mm;
+    row-gap: 4mm;
     margin: 0 !important;
     padding: 0 !important;
-    width: 195.5mm !important;
-    height: 276mm !important;
   }
 
   .barcode-sticker-cell {
