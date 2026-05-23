@@ -690,14 +690,14 @@ export default function POS({ session, onLogout }) {
 @page{size:210mm 297mm;margin-top:4mm;margin-bottom:4mm;margin-left:5mm;margin-right:5mm;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#fff;}
-.grid{display:grid;grid-template-columns:repeat(4,47.5mm);grid-template-rows:repeat(12,23.5mm);column-gap:3mm;row-gap:0.5mm;}
+.grid{display:grid;grid-template-columns:repeat(4,47.5mm);grid-template-rows:repeat(12,23.5mm);column-gap:3mm;row-gap:0mm;}
 .sticker{width:47.5mm;height:23.5mm;overflow:hidden;padding:0.8mm 1mm;display:flex;flex-direction:column;justify-content:space-between;font-family:Arial,sans-serif;background:#fff;}
 .shop-name{text-align:center;color:red;font-weight:900;font-size:7.5pt;font-family:"Arial Black",Arial,sans-serif;white-space:nowrap;overflow:hidden;}
 .barcode-wrap{width:100%;display:flex;justify-content:center;}
-.bottom-row{display:flex;justify-content:space-between;align-items:flex-end;font-size:5pt;font-weight:bold;color:#000;}
+.bottom-row{display:flex;justify-content:space-between;align-items:flex-end;font-size:4pt;font-weight:bold;color:#000;}
 .prod-name{width:35%;text-align:left;word-break:break-word;}
-.prod-barcode{width:30%;text-align:center;font-size:5.5pt;}
-.prod-price{width:35%;text-align:right;font-size:6pt;}
+.prod-barcode{width:30%;text-align:center;font-size:4pt;}
+.prod-price{width:35%;text-align:right;font-size:4.5pt;}
 </style></head><body><div class="grid">${cells}</div>
 <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</script>
 </body></html>`;
