@@ -687,7 +687,7 @@ export default function POS({ session, onLogout }) {
                     cells += `<div class="sticker"><div class="shop-name">VEDHA MOBILE SERVICE</div><div class="barcode-wrap">${svgStr}</div><div class="bottom-row"><span class="prod-name">${name}</span><span class="prod-barcode">${barcode}</span><span class="prod-price">${price}</span></div></div>`;
                   }
                   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
-@page{size:210mm 297mm;margin-top:5mm;margin-bottom:5mm;margin-left:5mm;margin-right:5mm;}
+@page{size:210mm 297mm;margin-top:4mm;margin-bottom:4mm;margin-left:5mm;margin-right:5mm;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#fff;}
 .grid{display:grid;grid-template-columns:repeat(4,47.5mm);grid-template-rows:repeat(12,23.5mm);column-gap:3mm;row-gap:0.5mm;}
