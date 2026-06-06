@@ -275,7 +275,7 @@ export default function POS({ session, onLogout }) {
         phone,
         address,
         gstNumber,
-        date: new Date().toLocaleString()
+        date: new Date().toLocaleString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
       };
       setReceipt(completedReceipt);
       setCart([]);
@@ -324,7 +324,7 @@ export default function POS({ session, onLogout }) {
         address: saleData.address || "",
         gstNumber: saleData.gst_number || "",
         payment_method: saleData.payment_method,
-        date: new Date(saleData.created_at).toLocaleString()
+        date: new Date(saleData.created_at).toLocaleString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
       });
       setShowGlobalPreview(true);
     } catch (e) {
@@ -348,7 +348,7 @@ export default function POS({ session, onLogout }) {
         address: saleData.address || "",
         gstNumber: saleData.gst_number || "",
         payment_method: saleData.payment_method,
-        date: new Date(saleData.created_at).toLocaleString()
+        date: new Date(saleData.created_at).toLocaleString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
       });
       setShowGlobalPreview(true);
     } catch (e) {
@@ -2262,7 +2262,7 @@ function Receipt80mm({ receipt }) {
   const isInclusive = !isTaxFree && receipt.subtotal === receipt.total;
   const dateObj = receipt.date ? new Date(receipt.date) : new Date();
   const isValid = !isNaN(dateObj.getTime());
-  const datePart = isValid ? dateObj.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }) : (receipt.date?.split(",")[0] || "");
+  const datePart = isValid ? dateObj.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }) : (receipt.date?.split(",")[0]?.trim() || "");
   const timePart = isValid ? dateObj.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase() : (receipt.date?.split(",")[1]?.trim() || "");
   const base = { fontFamily: "Arial, sans-serif", fontSize: "11px", color: "#000", backgroundColor: "#fff", width: "100%", padding: "0 6px 6px 6px", boxSizing: "border-box", display: "block" };
   const hr = <div style={{ borderTop: "1px solid #000", margin: "4px 0" }} />;
