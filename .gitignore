@@ -7,3 +7,6 @@ backend/database.sqlite-*
 .env
 .env.local
 frontend/android/
+frontend/dist/
+electron/frontend-dist/
+frontend/public/square.ps1
