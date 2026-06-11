@@ -580,7 +580,7 @@ export default function POS({ session, onLogout }) {
               phone: phone,
               address: address,
               gstNumber: gstNumber,
-              date: new Date().toLocaleString()
+              date: formatDate(new Date())
             }}
           />
         )}
