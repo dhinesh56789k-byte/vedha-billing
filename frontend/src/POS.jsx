@@ -91,6 +91,19 @@ const tzOffset = now.getTimezoneOffset() * 60000;
 const today = new Date(now.getTime() - tzOffset).toISOString().slice(0, 10);
 const defaultFrom = new Date(now.getTime() - tzOffset - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+// Always formats as DD/MM/YYYY, HH:MM AM/PM regardless of system locale
+function formatDate(dateInput) {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const hh = d.getHours();
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12 = String(hh % 12 || 12).padStart(2, '0');
+  return `${dd}/${mm}/${yyyy}, ${h12}:${min} ${ampm}`;
+}
+
 const categoryIconMap = {
   accessories: Cable,
   accessory: Cable,
@@ -275,7 +288,7 @@ export default function POS({ session, onLogout }) {
         phone,
         address,
         gstNumber,
-        date: new Date().toLocaleString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
+        date: formatDate(new Date())
       };
       setReceipt(completedReceipt);
       setCart([]);
@@ -324,7 +337,7 @@ export default function POS({ session, onLogout }) {
         address: saleData.address || "",
         gstNumber: saleData.gst_number || "",
         payment_method: saleData.payment_method,
-        date: new Date(saleData.created_at).toLocaleString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
+        date: formatDate(saleData.created_at)
       });
       setShowGlobalPreview(true);
     } catch (e) {
@@ -348,7 +361,7 @@ export default function POS({ session, onLogout }) {
         address: saleData.address || "",
         gstNumber: saleData.gst_number || "",
         payment_method: saleData.payment_method,
-        date: new Date(saleData.created_at).toLocaleString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
+        date: formatDate(saleData.created_at)
       });
       setShowGlobalPreview(true);
     } catch (e) {
