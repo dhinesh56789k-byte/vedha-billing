@@ -147,6 +147,8 @@ export default function POS({ session, onLogout }) {
   const [barcodeCopies, setBarcodeCopies] = useState(1);
   const [barcodeOffsetX, setBarcodeOffsetX] = useState(() => parseFloat(localStorage.getItem('barcode_offset_x') || '0'));
   const [barcodeOffsetY, setBarcodeOffsetY] = useState(() => parseFloat(localStorage.getItem('barcode_offset_y') || '0'));
+  const [barcodeRowHeightAdj, setBarcodeRowHeightAdj] = useState(() => parseFloat(localStorage.getItem('barcode_row_height_adj') || '0'));
+  const [barcodeColWidthAdj, setBarcodeColWidthAdj] = useState(() => parseFloat(localStorage.getItem('barcode_col_width_adj') || '0'));
   const [showGlobalPreview, setShowGlobalPreview] = useState(false);
   const [capturingPng, setCapturingPng] = useState(false);
   const receiptRef = useRef(null);
@@ -681,7 +683,7 @@ export default function POS({ session, onLogout }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '85px', fontSize: '11.5px', color: '#475569' }}>Left / Right:</span>
+                    <span style={{ width: '95px', fontSize: '11.5px', color: '#475569' }}>Left / Right Shift:</span>
                     <input
                       type="range"
                       min="-15"
@@ -700,7 +702,7 @@ export default function POS({ session, onLogout }) {
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '85px', fontSize: '11.5px', color: '#475569' }}>Up / Down:</span>
+                    <span style={{ width: '95px', fontSize: '11.5px', color: '#475569' }}>Up / Down Shift:</span>
                     <input
                       type="range"
                       min="-15"
@@ -718,9 +720,47 @@ export default function POS({ session, onLogout }) {
                       {barcodeOffsetY > 0 ? `+${barcodeOffsetY}` : barcodeOffsetY} mm
                     </span>
                   </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '95px', fontSize: '11.5px', color: '#475569' }}>Row Height Adj:</span>
+                    <input
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.02"
+                      value={barcodeRowHeightAdj}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setBarcodeRowHeightAdj(val);
+                        localStorage.setItem('barcode_row_height_adj', val.toString());
+                      }}
+                      style={{ flex: 1, accentColor: '#3b82f6' }}
+                    />
+                    <span style={{ width: '55px', fontSize: '11.5px', fontWeight: '600', textAlign: 'right', color: '#1e293b' }}>
+                      {barcodeRowHeightAdj > 0 ? `+${barcodeRowHeightAdj}` : barcodeRowHeightAdj} mm
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '95px', fontSize: '11.5px', color: '#475569' }}>Col Width Adj:</span>
+                    <input
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.02"
+                      value={barcodeColWidthAdj}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setBarcodeColWidthAdj(val);
+                        localStorage.setItem('barcode_col_width_adj', val.toString());
+                      }}
+                      style={{ flex: 1, accentColor: '#3b82f6' }}
+                    />
+                    <span style={{ width: '55px', fontSize: '11.5px', fontWeight: '600', textAlign: 'right', color: '#1e293b' }}>
+                      {barcodeColWidthAdj > 0 ? `+${barcodeColWidthAdj}` : barcodeColWidthAdj} mm
+                    </span>
+                  </div>
                 </div>
                 <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '6px', fontStyle: 'italic', lineHeight: '1.3' }}>
-                  💡 Positive values shift right/down, negative values shift left/up. Calibrations are saved automatically.
+                  💡 Use **Row Height Adj** to correct vertical drift. Positive values stretch row size down, negative values shrink them up.
                 </div>
               </div>
 
@@ -765,8 +805,8 @@ export default function POS({ session, onLogout }) {
 body{background:#fff;}
 .page-container{width:210mm;height:297mm;page-break-after:always;page-break-inside:avoid;overflow:hidden;box-sizing:border-box;}
 .page-container:last-child{page-break-after:avoid;}
-.grid{display:grid;grid-template-columns:repeat(4,47.5mm);grid-template-rows:repeat(12,23.5mm);column-gap:3mm;row-gap:0mm;margin-top:${4 + barcodeOffsetY}mm;margin-left:${5 + barcodeOffsetX}mm;}
-.sticker{width:47.5mm;height:23.5mm;overflow:hidden;padding:0.8mm 1mm;display:flex;flex-direction:column;justify-content:space-between;font-family:Arial,sans-serif;background:#fff;}
+.grid{display:grid;grid-template-columns:repeat(4,${47.5 + barcodeColWidthAdj}mm);grid-template-rows:repeat(12,${23.5 + barcodeRowHeightAdj}mm);column-gap:3mm;row-gap:0mm;margin-top:${4 + barcodeOffsetY}mm;margin-left:${5 + barcodeOffsetX}mm;}
+.sticker{width:${47.5 + barcodeColWidthAdj}mm;height:${23.5 + barcodeRowHeightAdj}mm;overflow:hidden;padding:0.8mm 1mm;display:flex;flex-direction:column;justify-content:space-between;font-family:Arial,sans-serif;background:#fff;}
 .shop-name{text-align:center;color:red;font-weight:900;font-size:7.5pt;font-family:"Arial Black",Arial,sans-serif;white-space:nowrap;overflow:hidden;}
 .barcode-wrap{width:100%;display:flex;justify-content:center;}
 .bottom-row{display:flex;justify-content:space-between;align-items:flex-end;font-size:4pt;font-weight:bold;color:#000;}
