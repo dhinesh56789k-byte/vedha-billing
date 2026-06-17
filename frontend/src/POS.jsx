@@ -145,6 +145,8 @@ export default function POS({ session, onLogout }) {
   const [viewPngPending, setViewPngPending] = useState(false);
   const [printingBarcode, setPrintingBarcode] = useState(null);
   const [barcodeCopies, setBarcodeCopies] = useState(1);
+  const [barcodeOffsetX, setBarcodeOffsetX] = useState(() => parseFloat(localStorage.getItem('barcode_offset_x') || '0'));
+  const [barcodeOffsetY, setBarcodeOffsetY] = useState(() => parseFloat(localStorage.getItem('barcode_offset_y') || '0'));
   const [showGlobalPreview, setShowGlobalPreview] = useState(false);
   const [capturingPng, setCapturingPng] = useState(false);
   const receiptRef = useRef(null);
@@ -671,7 +673,58 @@ export default function POS({ session, onLogout }) {
                 />
                 <button onClick={() => setBarcodeCopies(48)} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: '#1e3a5f', color: '#7dd3fc', border: 'none', cursor: 'pointer' }}>Full Sheet (48)</button>
               </div>
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', width: '100%', marginTop: '8px' }}>
+
+              {/* Calibration Sliders */}
+              <div style={{ width: '100%', borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '10px' }}>
+                <div style={{ fontWeight: '600', fontSize: '12.5px', marginBottom: '8px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>🔧 Alignment Calibration (mm)</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '85px', fontSize: '11.5px', color: '#475569' }}>Left / Right:</span>
+                    <input
+                      type="range"
+                      min="-15"
+                      max="15"
+                      step="0.1"
+                      value={barcodeOffsetX}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setBarcodeOffsetX(val);
+                        localStorage.setItem('barcode_offset_x', val.toString());
+                      }}
+                      style={{ flex: 1, accentColor: '#10b981' }}
+                    />
+                    <span style={{ width: '55px', fontSize: '11.5px', fontWeight: '600', textAlign: 'right', color: '#1e293b' }}>
+                      {barcodeOffsetX > 0 ? `+${barcodeOffsetX}` : barcodeOffsetX} mm
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '85px', fontSize: '11.5px', color: '#475569' }}>Up / Down:</span>
+                    <input
+                      type="range"
+                      min="-15"
+                      max="15"
+                      step="0.1"
+                      value={barcodeOffsetY}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setBarcodeOffsetY(val);
+                        localStorage.setItem('barcode_offset_y', val.toString());
+                      }}
+                      style={{ flex: 1, accentColor: '#10b981' }}
+                    />
+                    <span style={{ width: '55px', fontSize: '11.5px', fontWeight: '600', textAlign: 'right', color: '#1e293b' }}>
+                      {barcodeOffsetY > 0 ? `+${barcodeOffsetY}` : barcodeOffsetY} mm
+                    </span>
+                  </div>
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '6px', fontStyle: 'italic', lineHeight: '1.3' }}>
+                  💡 Positive values shift right/down, negative values shift left/up. Calibrations are saved automatically.
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', width: '100%', marginTop: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
                 <button className="secondary-button" onClick={() => downloadBarcodeAsPNG(printingBarcode)} style={{ background: '#10b981', color: 'white', borderColor: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Download size={16} /> Save as PNG
                 </button>
@@ -695,15 +748,24 @@ export default function POS({ session, onLogout }) {
                   const name = item.name || '';
                   const barcode = item.barcode || '';
                   const price = currency.format(item.price);
-                  let cells = '';
-                  for (let i = 0; i < barcodeCopies; i++) {
-                    cells += `<div class="sticker"><div class="shop-name">VEDHA MOBILE SERVICE</div><div class="barcode-wrap">${svgStr}</div><div class="bottom-row"><span class="prod-name">${name}</span><span class="prod-barcode">${barcode}</span><span class="prod-price">${price}</span></div></div>`;
+                  
+                  let pagesHtml = '';
+                  for (let i = 0; i < barcodeCopies; i += 48) {
+                    let pageCells = '';
+                    const end = Math.min(i + 48, barcodeCopies);
+                    for (let j = i; j < end; j++) {
+                      pageCells += `<div class="sticker"><div class="shop-name">VEDHA MOBILE SERVICE</div><div class="barcode-wrap">${svgStr}</div><div class="bottom-row"><span class="prod-name">${name}</span><span class="prod-barcode">${barcode}</span><span class="prod-price">${price}</span></div></div>`;
+                    }
+                    pagesHtml += `<div class="page-container"><div class="grid">${pageCells}</div></div>`;
                   }
+
                   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
-@page{size:210mm 297mm;margin-top:4mm;margin-bottom:4mm;margin-left:5mm;margin-right:5mm;}
+@page{size:210mm 297mm;margin:0;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#fff;}
-.grid{display:grid;grid-template-columns:repeat(4,47.5mm);grid-template-rows:repeat(12,23.5mm);column-gap:3mm;row-gap:0mm;}
+.page-container{width:210mm;height:297mm;page-break-after:always;page-break-inside:avoid;overflow:hidden;box-sizing:border-box;}
+.page-container:last-child{page-break-after:avoid;}
+.grid{display:grid;grid-template-columns:repeat(4,47.5mm);grid-template-rows:repeat(12,23.5mm);column-gap:3mm;row-gap:0mm;margin-top:${4 + barcodeOffsetY}mm;margin-left:${5 + barcodeOffsetX}mm;}
 .sticker{width:47.5mm;height:23.5mm;overflow:hidden;padding:0.8mm 1mm;display:flex;flex-direction:column;justify-content:space-between;font-family:Arial,sans-serif;background:#fff;}
 .shop-name{text-align:center;color:red;font-weight:900;font-size:7.5pt;font-family:"Arial Black",Arial,sans-serif;white-space:nowrap;overflow:hidden;}
 .barcode-wrap{width:100%;display:flex;justify-content:center;}
@@ -711,7 +773,7 @@ body{background:#fff;}
 .prod-name{width:35%;text-align:left;word-break:break-word;}
 .prod-barcode{width:30%;text-align:center;font-size:4pt;}
 .prod-price{width:35%;text-align:right;font-size:4.5pt;font-weight:900;}
-</style></head><body><div class="grid">${cells}</div>
+</style></head><body>${pagesHtml}
 <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</script>
 </body></html>`;
                   const blob = new Blob([html], { type: 'text/html' });
