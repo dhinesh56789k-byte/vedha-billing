@@ -1693,6 +1693,8 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [reprinting, setReprinting] = useState(null);
   const [viewingPng, setViewingPng] = useState(null);
+  const [editingSale, setEditingSale] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   async function loadCustomers() {
     setCustomers((await api.get("/customers", { params: { search } })).data);
@@ -1726,6 +1728,48 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
       await onViewPng(saleId);
     } finally {
       setViewingPng(null);
+    }
+  }
+
+  function openEditModal(sale) {
+    setEditingSale({
+      ...sale,
+      customer: sale.customer || "",
+      phone: sale.phone || "",
+      address: sale.address || "",
+      gst_number: sale.gst_number || "",
+      payment_method: sale.payment_method || "cash",
+      items: (sale.items || []).map(it => ({ ...it }))
+    });
+  }
+
+  async function saveSaleEdits(reprintAfter = false) {
+    if (!editingSale) return;
+    setSavingEdit(true);
+    try {
+      const res = await api.patch(`/sales/${editingSale.id}`, {
+        customer: editingSale.customer,
+        phone: editingSale.phone,
+        address: editingSale.address,
+        gst_number: editingSale.gst_number,
+        payment_method: editingSale.payment_method,
+        items: editingSale.items
+      });
+
+      const updated = res.data.sale;
+      setHistory(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s));
+      await loadCustomers();
+
+      const targetId = editingSale.id;
+      setEditingSale(null);
+
+      if (reprintAfter) {
+        await handleReprint(targetId);
+      }
+    } catch (e) {
+      alert(e.response?.data?.error || "Failed to update bill.");
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -1848,6 +1892,14 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
                   </button>
                   <button
                     className="secondary-button"
+                    style={{padding:"4px 12px",fontSize:"12px",minHeight:"unset",display:"flex",gap:"5px",alignItems:"center",borderColor:"#38bdf8",color:"#38bdf8"}}
+                    onClick={() => openEditModal(sale)}
+                  >
+                    <Pencil size={13} />
+                    Edit Bill
+                  </button>
+                  <button
+                    className="secondary-button"
                     style={{padding:"4px 12px",fontSize:"12px",minHeight:"unset",display:"flex",gap:"5px",alignItems:"center"}}
                     onClick={() => handleViewPng(sale.id)}
                     disabled={viewingPng === sale.id}
@@ -1885,6 +1937,125 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
           ))
         }
       </div>
+
+      {/* Edit Bill Modal */}
+      {editingSale && (
+        <div className="preview-modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="preview-modal-content" style={{ maxWidth: "520px", width: "100%" }}>
+            <div style={{ fontWeight: "700", fontSize: "16px", marginBottom: "12px", color: "#e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>✏️ Edit Bill #{(editingSale.bill_number !== null && editingSale.bill_number !== undefined) ? editingSale.bill_number : editingSale.id}</span>
+              <span style={{ fontSize: "13px", color: "#22c55e", fontWeight: "700" }}>{currency.format(editingSale.total)}</span>
+            </div>
+
+            <div style={{ display: "grid", gap: "10px", maxHeight: "65vh", overflowY: "auto", paddingRight: "4px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div>
+                  <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", display: "block", marginBottom: "4px" }}>Customer Name:</label>
+                  <input
+                    type="search"
+                    value={editingSale.customer}
+                    onChange={e => setEditingSale({ ...editingSale, customer: e.target.value })}
+                    style={{ width: "100%", background: "#fff", color: "#0f172a", borderRadius: "4px", padding: "6px 8px", border: "1px solid #cbd5e1", fontSize: "12px" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", display: "block", marginBottom: "4px" }}>Phone Number:</label>
+                  <input
+                    type="search"
+                    value={editingSale.phone}
+                    onChange={e => setEditingSale({ ...editingSale, phone: e.target.value })}
+                    style={{ width: "100%", background: "#fff", color: "#0f172a", borderRadius: "4px", padding: "6px 8px", border: "1px solid #cbd5e1", fontSize: "12px" }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", display: "block", marginBottom: "4px" }}>Address:</label>
+                <textarea
+                  value={editingSale.address}
+                  onChange={e => setEditingSale({ ...editingSale, address: e.target.value })}
+                  rows={2}
+                  style={{ width: "100%", background: "#fff", color: "#0f172a", borderRadius: "4px", padding: "6px 8px", border: "1px solid #cbd5e1", resize: "vertical", fontFamily: "inherit", fontSize: "12px" }}
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div>
+                  <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", display: "block", marginBottom: "4px" }}>GST Number:</label>
+                  <input
+                    type="search"
+                    value={editingSale.gst_number}
+                    onChange={e => setEditingSale({ ...editingSale, gst_number: e.target.value })}
+                    style={{ width: "100%", background: "#fff", color: "#0f172a", borderRadius: "4px", padding: "6px 8px", border: "1px solid #cbd5e1", fontSize: "12px" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", display: "block", marginBottom: "4px" }}>Payment Method:</label>
+                  <select
+                    value={editingSale.payment_method}
+                    onChange={e => setEditingSale({ ...editingSale, payment_method: e.target.value })}
+                    style={{ width: "100%", background: "#fff", color: "#0f172a", borderRadius: "4px", padding: "6px 8px", border: "1px solid #cbd5e1", fontSize: "12px" }}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="upi">UPI</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Items details / discounts */}
+              {editingSale.items && editingSale.items.length > 0 && (
+                <div style={{ marginTop: "6px" }}>
+                  <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", display: "block", marginBottom: "6px" }}>Item Descriptions & Discounts:</label>
+                  {editingSale.items.map((it, idx) => (
+                    <div key={it.id || idx} style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "6px", padding: "8px", marginBottom: "6px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#e2e8f0", fontWeight: "600", marginBottom: "4px" }}>
+                        <span>{it.name} × {it.qty}</span>
+                        <span>{currency.format(it.line_total)}</span>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: "6px" }}>
+                        <input
+                          placeholder="Note / Serial / IMEI"
+                          value={it.description || ""}
+                          onChange={e => {
+                            const updatedItems = [...editingSale.items];
+                            updatedItems[idx].description = e.target.value;
+                            setEditingSale({ ...editingSale, items: updatedItems });
+                          }}
+                          style={{ background: "#0f172a", color: "#e2e8f0", border: "1px solid #475569", borderRadius: "4px", padding: "4px 8px", fontSize: "11px" }}
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Discount ₹"
+                          value={it.discount || ""}
+                          onChange={e => {
+                            const updatedItems = [...editingSale.items];
+                            updatedItems[idx].discount = Number(e.target.value) || 0;
+                            setEditingSale({ ...editingSale, items: updatedItems });
+                          }}
+                          style={{ background: "#0f172a", color: "#e2e8f0", border: "1px solid #475569", borderRadius: "4px", padding: "4px 8px", fontSize: "11px" }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "16px", borderTop: "1px solid #334155", paddingTop: "12px" }}>
+              <button className="secondary-button" onClick={() => setEditingSale(null)} disabled={savingEdit}>Cancel</button>
+              <button className="secondary-button" onClick={() => saveSaleEdits(false)} disabled={savingEdit} style={{ borderColor: "#38bdf8", color: "#38bdf8" }}>
+                {savingEdit ? "Saving…" : "Save Changes"}
+              </button>
+              <button className="primary-button" onClick={() => saveSaleEdits(true)} disabled={savingEdit} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Printer size={14} />
+                {savingEdit ? "Saving…" : "Save & Reprint"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

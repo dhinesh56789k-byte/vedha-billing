@@ -459,6 +459,69 @@ app.get("/sales/:id", auth(), async (req, res, next) => {
   }
 });
 
+app.patch("/sales/:id", auth(), async (req, res, next) => {
+  try {
+    const saleId = req.params.id;
+    const current = await get("SELECT * FROM sales WHERE id = $1", [saleId]);
+    if (!current) return res.status(404).json({ error: "Sale not found" });
+
+    const customer = req.body.customer !== undefined ? req.body.customer.trim() : current.customer;
+    const phone = req.body.phone !== undefined ? req.body.phone.trim() : current.phone;
+    const address = req.body.address !== undefined ? req.body.address.trim() : current.address;
+    const gstNumber = req.body.gstNumber !== undefined ? req.body.gstNumber.trim() : (req.body.gst_number !== undefined ? req.body.gst_number.trim() : current.gst_number);
+    const paymentMethod = req.body.paymentMethod !== undefined ? req.body.paymentMethod : (req.body.payment_method !== undefined ? req.body.payment_method : current.payment_method);
+
+    await run(
+      `UPDATE sales
+       SET customer = $1, phone = $2, address = $3, gst_number = $4, payment_method = $5
+       WHERE id = $6`,
+      [customer, phone, address, gstNumber, paymentMethod, saleId]
+    );
+
+    if (Array.isArray(req.body.items)) {
+      for (const item of req.body.items) {
+        if (item.id) {
+          const discount = Math.max(0, Number(item.discount || 0));
+          const effectivePrice = Number(item.price) - discount;
+          const lineTotal = effectivePrice * Number(item.qty);
+          await run(
+            `UPDATE sale_items
+             SET description = $1, discount = $2, line_total = $3
+             WHERE id = $4 AND sale_id = $5`,
+            [item.description || null, discount, lineTotal, item.id, saleId]
+          );
+        }
+      }
+
+      const items = await all("SELECT line_total FROM sale_items WHERE sale_id = $1", [saleId]);
+      const cart_sum = items.reduce((sum, it) => sum + Number(it.line_total), 0);
+      let subtotal = cart_sum;
+      let tax = Number(current.tax);
+      let total = cart_sum;
+
+      if (current.tax_mode === "exclusive") {
+        tax = Number((cart_sum * 0.18).toFixed(2));
+        total = Number((cart_sum + tax).toFixed(2));
+      } else if (current.tax_mode === "inclusive") {
+        const base = cart_sum / 1.18;
+        tax = Number((cart_sum - base).toFixed(2));
+        total = cart_sum;
+      }
+
+      await run(
+        "UPDATE sales SET subtotal = $1, tax = $2, total = $3 WHERE id = $4",
+        [subtotal, tax, total, saleId]
+      );
+    }
+
+    const updatedSale = await get("SELECT * FROM sales WHERE id = $1", [saleId]);
+    updatedSale.items = await all("SELECT * FROM sale_items WHERE sale_id = $1", [saleId]);
+    res.json({ success: true, sale: updatedSale });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.delete("/sales/:id", auth(["admin"]), async (req, res, next) => {
   try {
     await run("DELETE FROM sales WHERE id = $1", [req.params.id]);
