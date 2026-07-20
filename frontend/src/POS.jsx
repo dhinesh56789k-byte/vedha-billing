@@ -1699,7 +1699,7 @@ function CategoriesAdmin({ reload, setMessage, isAdmin }) {
 }
 
 
-function Customers({ onReprint, onViewPng, paper, isAdmin }) {
+function Customers({ onReprint, onViewPng, paper, setPaper, isAdmin }) {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
   const [history, setHistory] = useState([]);
