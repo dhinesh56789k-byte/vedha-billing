@@ -391,19 +391,29 @@ app.post("/sales", auth(), async (req, res, next) => {
         total = cart_sum;
       }
 
-      const year = new Date().getFullYear();
-      const countRes = await tx.get(
-        "SELECT COUNT(*) as count FROM sales WHERE EXTRACT(YEAR FROM created_at) = $1",
-        [year]
-      );
-      const nextNum = parseInt(countRes.count || 0) + 1;
-      const bill_number = String(nextNum).padStart(3, '0');
+      const taxMode = req.body.tax_mode || 'none';
+      const isTaxBill = taxMode === 'inclusive' || taxMode === 'exclusive';
+      let bill_number = '0';
+
+      if (isTaxBill) {
+        const year = new Date().getFullYear();
+        const maxRes = await tx.get(
+          `SELECT COALESCE(MAX(CAST(bill_number AS INTEGER)), 0) as max_num
+           FROM sales
+           WHERE EXTRACT(YEAR FROM created_at) = $1
+             AND bill_number ~ '^[0-9]+$'
+             AND bill_number != '0'`,
+          [year]
+        );
+        const nextNum = parseInt(maxRes.max_num || 0) + 1;
+        bill_number = String(nextNum).padStart(3, '0');
+      }
 
       const saleResult = await tx.run(
         `INSERT INTO sales (bill_number, customer, phone, address, gst_number, subtotal, tax, total, payment_method, tax_mode, created_by)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING id, bill_number`,
-        [bill_number, customer.trim(), phone.trim(), address.trim(), gstNumber.trim(), subtotal, tax, total, payment_method, req.body.tax_mode || 'no-tax', req.user.id]
+        [bill_number, customer.trim(), phone.trim(), address.trim(), gstNumber.trim(), subtotal, tax, total, payment_method, taxMode, req.user.id]
       );
 
       for (const item of saleItems) {
@@ -704,7 +714,7 @@ async function buildReport(query) {
   
   let taxFilter = "";
   if (query.tax_mode === 'tax') taxFilter = " AND s.tax_mode IN ('inclusive', 'exclusive')";
-  else if (query.tax_mode === 'notax') taxFilter = " AND s.tax_mode = 'no-tax'";
+  else if (query.tax_mode === 'notax') taxFilter = " AND s.tax_mode IN ('no-tax', 'none')";
   
   const params = [from, to];
 

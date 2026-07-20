@@ -574,7 +574,7 @@ export default function POS({ session, onLogout }) {
         ) : (
           <Receipt
             paper={paper}
-            receipt={receipt.billNumber ? receipt : {
+            receipt={(receipt.billNumber !== null && receipt.billNumber !== undefined) ? receipt : {
               ...receipt,
               items: cart,
               subtotal: subtotal,
@@ -936,15 +936,16 @@ function BillingView(props) {
   }
 
   function prepareReceiptForPrint() {
+    const hasBill = current => current.billNumber !== null && current.billNumber !== undefined;
     props.setReceipt((current) => ({
       ...current,
-      printCount: current.billNumber ? current.printCount + 1 : current.printCount,
-      items: current.billNumber ? current.items : props.cart,
-      subtotal: current.billNumber ? current.subtotal : props.subtotal,
-      tax: current.billNumber ? current.tax : props.tax,
-      total: current.billNumber ? current.total : props.total,
-      customer: current.billNumber ? current.customer : props.customer,
-      phone: current.billNumber ? current.phone : props.phone,
+      printCount: hasBill(current) ? current.printCount + 1 : current.printCount,
+      items: hasBill(current) ? current.items : props.cart,
+      subtotal: hasBill(current) ? current.subtotal : props.subtotal,
+      tax: hasBill(current) ? current.tax : props.tax,
+      total: hasBill(current) ? current.total : props.total,
+      customer: hasBill(current) ? current.customer : props.customer,
+      phone: hasBill(current) ? current.phone : props.phone,
       date: current.date || new Date().toLocaleString()
     }));
   }
@@ -1829,7 +1830,7 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:"6px"}}>
                 <div>
                   <strong style={{color:"#e2e8f0",fontSize:"14px"}}>
-                    Invoice #{sale.bill_number || sale.id}
+                    Invoice #{(sale.bill_number !== null && sale.bill_number !== undefined) ? sale.bill_number : sale.id}
                   </strong>
                   <span style={{marginLeft:"10px",color:"#22c55e",fontWeight:700}}>
                     {currency.format(sale.total)}
