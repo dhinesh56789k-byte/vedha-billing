@@ -545,7 +545,7 @@ export default function POS({ session, onLogout }) {
         ) : null}
         {activeView === "categories" ? <CategoriesAdmin reload={loadData} setMessage={setMessage} isAdmin={isAdmin} /> : null}
         {activeView === "staff" && isAdmin ? <StaffAdmin setMessage={setMessage} /> : null}
-        {activeView === "customers" ? <Customers onReprint={reprintSale} onViewPng={viewBillAsPng} paper={paper} isAdmin={isAdmin} /> : null}
+        {activeView === "customers" ? <Customers onReprint={reprintSale} onViewPng={viewBillAsPng} paper={paper} setPaper={setPaper} isAdmin={isAdmin} /> : null}
         {activeView === "reports" ? <Reports /> : null}
         {activeView === "expenses" && isAdmin ? <Expenses setMessage={setMessage} isAdmin={isAdmin} /> : null}
         {activeView === "alerts" ? <AlertsPage products={products} /> : null}
@@ -594,55 +594,69 @@ export default function POS({ session, onLogout }) {
       {showGlobalPreview && (
         <div className="preview-modal-overlay" style={{ zIndex: 9999 }}>
           <div className="preview-modal-content">
-            <div className="preview-modal-actions">
-              <button className="secondary-button" onClick={() => setShowGlobalPreview(false)}>Close</button>
-              <button
-                className="secondary-button"
-                onClick={async () => {
-                  if (!receiptRef.current) return;
-                  setCapturingPng(true);
-                  try {
-                    if (window.posPrinter?.captureReceiptPng) {
-                      const rect = receiptRef.current.getBoundingClientRect();
-                      await window.posPrinter.captureReceiptPng({
-                        x: rect.left, y: rect.top,
-                        width: rect.width, height: rect.height
-                      });
-                    } else {
-                      // Web browser fallback
-                      let html2canvas = window.html2canvas;
-                      if (!html2canvas) {
-                        await new Promise((resolve, reject) => {
-                          const script = document.createElement('script');
-                          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-                          script.onload = resolve;
-                          script.onerror = reject;
-                          document.head.appendChild(script);
+            <div className="preview-modal-actions" style={{ flexWrap: "wrap", gap: "8px", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ fontSize: "12px", fontWeight: "600", color: "#94a3b8" }}>📄 Paper Size:</span>
+                <select
+                  value={paper}
+                  onChange={(e) => setPaper(e.target.value)}
+                  style={{ background: "#1e293b", color: "#e2e8f0", border: "1px solid #475569", borderRadius: "4px", padding: "4px 8px", fontSize: "12px" }}
+                >
+                  <option value="80mm">80mm Thermal</option>
+                  <option value="A4">A4 Sheet</option>
+                  <option value="A5">A5 Sheet</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button className="secondary-button" onClick={() => setShowGlobalPreview(false)}>Close</button>
+                <button
+                  className="secondary-button"
+                  onClick={async () => {
+                    if (!receiptRef.current) return;
+                    setCapturingPng(true);
+                    try {
+                      if (window.posPrinter?.captureReceiptPng) {
+                        const rect = receiptRef.current.getBoundingClientRect();
+                        await window.posPrinter.captureReceiptPng({
+                          x: rect.left, y: rect.top,
+                          width: rect.width, height: rect.height
                         });
-                        html2canvas = window.html2canvas;
+                      } else {
+                        // Web browser fallback
+                        let html2canvas = window.html2canvas;
+                        if (!html2canvas) {
+                          await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                          });
+                          html2canvas = window.html2canvas;
+                        }
+                        const canvas = await html2canvas(receiptRef.current, { scale: 2 });
+                        const link = document.createElement('a');
+                        link.download = `Receipt_${receipt.billNumber || 'preview'}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
                       }
-                      const canvas = await html2canvas(receiptRef.current, { scale: 2 });
-                      const link = document.createElement('a');
-                      link.download = `Receipt_${receipt.billNumber || 'preview'}.png`;
-                      link.href = canvas.toDataURL('image/png');
-                      link.click();
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setCapturingPng(false);
                     }
-                  } catch (e) {
-                    console.error(e);
-                  } finally {
-                    setCapturingPng(false);
-                  }
-                }}
-                disabled={capturingPng}
-                style={{display:"flex",gap:"6px",alignItems:"center"}}
-              >
-                <Image size={15} />
-                {capturingPng ? "Capturing…" : "Save as PNG"}
-              </button>
-              <button className="primary-button" onClick={() => {
-                setShowGlobalPreview(false);
-                setTimeout(() => printReceipt(paper), 150);
-              }}>Print</button>
+                  }}
+                  disabled={capturingPng}
+                  style={{display:"flex",gap:"6px",alignItems:"center"}}
+                >
+                  <Image size={15} />
+                  {capturingPng ? "Capturing…" : "Save as PNG"}
+                </button>
+                <button className="primary-button" onClick={() => {
+                  setShowGlobalPreview(false);
+                  setTimeout(() => printReceipt(paper), 150);
+                }}>Print</button>
+              </div>
             </div>
             <div className={`paper-${paper} preview-container`} ref={receiptRef}>
               <Receipt
@@ -1843,11 +1857,27 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
 
       {/* Right: Purchase history */}
       <div className="content-panel stacked">
-        <h2 style={{margin:"0 0 12px",fontSize:"15px",color:"#e2e8f0"}}>
-          {selectedCustomer
-            ? <>Purchase History — <span style={{color:"#86efac"}}>{selectedCustomer.customer}</span> ({selectedCustomer.phone})</>
-            : "Purchase History (1 Year)"}
-        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+          <h2 style={{ margin: 0, fontSize: "15px", color: "#e2e8f0" }}>
+            {selectedCustomer
+              ? <>Purchase History — <span style={{ color: "#86efac" }}>{selectedCustomer.customer}</span> ({selectedCustomer.phone})</>
+              : "Purchase History (1 Year)"}
+          </h2>
+          {setPaper && (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: "600" }}>📄 Paper:</span>
+              <select
+                value={paper}
+                onChange={(e) => setPaper(e.target.value)}
+                style={{ background: "#fff", color: "#0f172a", border: "1px solid #cbd5e1", borderRadius: "4px", padding: "4px 8px", fontSize: "12px", fontWeight: "600" }}
+              >
+                <option value="80mm">80mm Thermal</option>
+                <option value="A4">A4 Sheet</option>
+                <option value="A5">A5 Sheet</option>
+              </select>
+            </div>
+          )}
+        </div>
         {selectedCustomer && (
           <div className="search-box" style={{marginBottom:"12px",padding:"0 8px",minHeight:"36px"}}>
             <Search size={14} />
@@ -1979,7 +2009,7 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
                 <div>
                   <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", display: "block", marginBottom: "4px" }}>GST Number:</label>
                   <input
@@ -2001,6 +2031,20 @@ function Customers({ onReprint, onViewPng, paper, isAdmin }) {
                     <option value="upi">UPI</option>
                   </select>
                 </div>
+                {setPaper && (
+                  <div>
+                    <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", display: "block", marginBottom: "4px" }}>Print Paper:</label>
+                    <select
+                      value={paper}
+                      onChange={e => setPaper(e.target.value)}
+                      style={{ width: "100%", background: "#fff", color: "#0f172a", borderRadius: "4px", padding: "6px 8px", border: "1px solid #cbd5e1", fontSize: "12px", fontWeight: "600" }}
+                    >
+                      <option value="80mm">80mm Thermal</option>
+                      <option value="A4">A4 Sheet</option>
+                      <option value="A5">A5 Sheet</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Items details / discounts */}
