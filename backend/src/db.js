@@ -173,6 +173,28 @@ async function initDb() {
 
   // Ensure any categories from existing products are synced
   await run("INSERT INTO categories (name) SELECT DISTINCT category FROM products WHERE category IS NOT NULL ON CONFLICT DO NOTHING");
+
+  // Migration: Re-sequence all past sales (No-Tax bills -> '001', Tax bills -> '001', '002', '003'...)
+  try {
+    await run("UPDATE sales SET bill_number = '001' WHERE tax_mode IN ('none', 'no-tax') OR tax_mode IS NULL");
+    await run(`
+      WITH renumbered AS (
+        SELECT id,
+               LPAD(ROW_NUMBER() OVER (
+                 PARTITION BY EXTRACT(YEAR FROM created_at)
+                 ORDER BY created_at ASC, id ASC
+               )::text, 3, '0') as new_bill_number
+        FROM sales
+        WHERE tax_mode IN ('inclusive', 'exclusive')
+      )
+      UPDATE sales
+      SET bill_number = renumbered.new_bill_number
+      FROM renumbered
+      WHERE sales.id = renumbered.id
+    `);
+  } catch (err) {
+    console.error("Sales re-sequencing migration error:", err);
+  }
 }
 
 async function ensureColumn(table, column, definition) {

@@ -393,7 +393,7 @@ app.post("/sales", auth(), async (req, res, next) => {
 
       const taxMode = req.body.tax_mode || 'none';
       const isTaxBill = taxMode === 'inclusive' || taxMode === 'exclusive';
-      let bill_number = '0';
+      let bill_number = '001';
 
       if (isTaxBill) {
         const year = new Date().getFullYear();
@@ -401,8 +401,8 @@ app.post("/sales", auth(), async (req, res, next) => {
           `SELECT COALESCE(MAX(CAST(bill_number AS INTEGER)), 0) as max_num
            FROM sales
            WHERE EXTRACT(YEAR FROM created_at) = $1
-             AND bill_number ~ '^[0-9]+$'
-             AND bill_number != '0'`,
+             AND tax_mode IN ('inclusive', 'exclusive')
+             AND bill_number ~ '^[0-9]+$'`,
           [year]
         );
         const nextNum = parseInt(maxRes.max_num || 0) + 1;
