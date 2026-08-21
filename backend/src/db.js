@@ -20,7 +20,15 @@ const pool = new Pool({
   ssl: needsSsl ? { rejectUnauthorized: false } : false,
   connectionTimeoutMillis: 10000, // 10s timeout
   idleTimeoutMillis: 30000,      // 30s idle timeout
-  keepAlive: true                // Keep connection alive for cloud DBs
+  keepAlive: true,                // Keep connection alive for cloud DBs
+  family: 4,                      // Strictly force IPv4 socket family
+  lookup: (hostname, options, cb) => {
+    if (typeof options === "function") {
+      cb = options;
+      options = {};
+    }
+    dns.lookup(hostname, { ...options, family: 4 }, cb);
+  }
 });
 
 
