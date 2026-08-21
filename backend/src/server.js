@@ -18,6 +18,11 @@ const taxRate = Number(process.env.TAX_RATE || 0.18);
 app.use(cors());
 app.use(express.json());
 
+// Health check endpoint for wake-up detection
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // Serve built React frontend (if present)
 const frontendDist = path.join(__dirname, "..", "..", "frontend", "dist");
 if (require("fs").existsSync(frontendDist)) {

@@ -64,6 +64,23 @@ function createWindow() {
     };
   });
 
+  win.webContents.on("did-finish-load", () => {
+    const title = win.getTitle() || "";
+    if (title.includes("Render") || title.includes("Application loading")) {
+      console.log("Render cold-start loading page detected. Polling server health...");
+      let checkInterval = setInterval(async () => {
+        try {
+          const res = await fetch("https://vedha-billing.onrender.com/health");
+          if (res.ok) {
+            clearInterval(checkInterval);
+            console.log("Server is online! Reloading window...");
+            win.loadURL("https://vedha-billing.onrender.com");
+          }
+        } catch (_) {}
+      }, 3000);
+    }
+  });
+
   win.loadURL("https://vedha-billing.onrender.com");
 }
 

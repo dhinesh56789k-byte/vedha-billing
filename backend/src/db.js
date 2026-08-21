@@ -43,6 +43,23 @@ async function all(sql, params = []) {
 }
 
 async function initDb() {
+  // Retry database connection to allow sleeping Neon DB to wake up cleanly
+  let retries = 10;
+  while (retries > 0) {
+    try {
+      await query("SELECT 1");
+      console.log("Database connected successfully.");
+      break;
+    } catch (err) {
+      retries -= 1;
+      console.warn(`Database connection waiting... (${retries} retries left). Message: ${err.message}`);
+      if (retries === 0) {
+        throw new Error("Could not connect to database after multiple attempts: " + err.message);
+      }
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  }
+
   await run(`CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
