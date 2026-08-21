@@ -1,4 +1,17 @@
 const dns = require("dns");
+const originalLookup = dns.lookup;
+dns.lookup = function (hostname, options, callback) {
+  if (typeof options === "function") {
+    callback = options;
+    options = {};
+  } else if (typeof options === "number") {
+    options = { family: options };
+  } else if (!options) {
+    options = {};
+  }
+  return originalLookup.call(dns, hostname, { ...options, family: 4 }, callback);
+};
+
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder("ipv4first");
 }
