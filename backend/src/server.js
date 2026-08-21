@@ -9,7 +9,12 @@ dns.lookup = function (hostname, options, callback) {
   } else if (!options) {
     options = {};
   }
-  return originalLookup.call(dns, hostname, { ...options, family: 4 }, callback);
+  originalLookup.call(dns, hostname, { ...options, family: 4 }, (err, address, family) => {
+    if (!err && address) {
+      return callback(null, address, family);
+    }
+    originalLookup.call(dns, hostname, options, callback);
+  });
 };
 
 if (dns.setDefaultResultOrder) {
