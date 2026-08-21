@@ -1,3 +1,8 @@
+const dns = require("dns");
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
 const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
 const mobileProducts = require("./mobileProducts");
