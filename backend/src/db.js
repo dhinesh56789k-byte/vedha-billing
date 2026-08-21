@@ -1,4 +1,7 @@
 const dns = require("dns");
+const dnsPromises = dns.promises;
+const { URL } = require("url");
+
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder("ipv4first");
 }
@@ -15,25 +18,51 @@ if (!databaseUrl) {
 
 const needsSsl = databaseUrl && !databaseUrl.includes("localhost") && !databaseUrl.includes("127.0.0.1") && !databaseUrl.includes("::1");
 
-const pool = new Pool({
-  connectionString: databaseUrl,
-  ssl: needsSsl ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 10000, // 10s timeout
-  idleTimeoutMillis: 30000,      // 30s idle timeout
-  keepAlive: true,                // Keep connection alive for cloud DBs
-  family: 4,                      // Strictly force IPv4 socket family
-  lookup: (hostname, options, cb) => {
-    if (typeof options === "function") {
-      cb = options;
-      options = {};
-    }
-    dns.lookup(hostname, { ...options, family: 4 }, cb);
-  }
-});
+let poolInstance = null;
 
+async function getPool() {
+  if (poolInstance) return poolInstance;
+
+  let connString = databaseUrl;
+  let sslOption = needsSsl ? { rejectUnauthorized: false } : false;
+
+  if (databaseUrl) {
+    try {
+      const parsed = new URL(databaseUrl);
+      const host = parsed.hostname;
+      if (host && host !== "localhost" && host !== "127.0.0.1" && host !== "::1" && !host.match(/^[0-9.]+$|^\[.*\]$/)) {
+        const resolved = await dnsPromises.lookup(host, { family: 4 });
+        if (resolved && resolved.address) {
+          parsed.hostname = resolved.address;
+          connString = parsed.toString();
+          if (needsSsl) {
+            sslOption = {
+              rejectUnauthorized: false,
+              servername: host
+            };
+          }
+          console.log(`Pre-resolved DB hostname '${host}' to IPv4 address '${resolved.address}'`);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not pre-resolve DB host to IPv4:", err.message);
+    }
+  }
+
+  poolInstance = new Pool({
+    connectionString: connString,
+    ssl: sslOption,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+    keepAlive: true
+  });
+
+  return poolInstance;
+}
 
 async function query(sql, params = []) {
-  return pool.query(sql, params);
+  const p = await getPool();
+  return p.query(sql, params);
 }
 
 async function run(sql, params = []) {
@@ -240,7 +269,8 @@ async function ensureColumn(table, column, definition) {
 }
 
 async function transaction(callback) {
-  const client = await pool.connect();
+  const p = await getPool();
+  const client = await p.connect();
   try {
     await client.query("BEGIN");
     const helpers = {
@@ -269,7 +299,7 @@ async function transaction(callback) {
 }
 
 module.exports = {
-  pool,
+  getPool,
   run,
   get,
   all,
