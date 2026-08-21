@@ -1050,17 +1050,19 @@ if (require("fs").existsSync(frontendIndex)) {
 }
 
 async function start() {
-  await initDb();
   app.listen(port, () => {
     console.log(`Backend running on http://localhost:${port}`);
   });
+
+  try {
+    await initDb();
+  } catch (err) {
+    console.error("Database initialization warning:", err.message);
+  }
 }
 
 if (require.main === module) {
-  start().catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+  start();
 }
 
 module.exports = app;

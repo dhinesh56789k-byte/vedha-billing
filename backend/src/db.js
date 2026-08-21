@@ -1,7 +1,4 @@
 const dns = require("dns");
-const dnsPromises = dns.promises;
-const { URL } = require("url");
-
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder("ipv4first");
 }
@@ -18,51 +15,16 @@ if (!databaseUrl) {
 
 const needsSsl = databaseUrl && !databaseUrl.includes("localhost") && !databaseUrl.includes("127.0.0.1") && !databaseUrl.includes("::1");
 
-let poolInstance = null;
-
-async function getPool() {
-  if (poolInstance) return poolInstance;
-
-  let connString = databaseUrl;
-  let sslOption = needsSsl ? { rejectUnauthorized: false } : false;
-
-  if (databaseUrl) {
-    try {
-      const parsed = new URL(databaseUrl);
-      const host = parsed.hostname;
-      if (host && host !== "localhost" && host !== "127.0.0.1" && host !== "::1" && !host.match(/^[0-9.]+$|^\[.*\]$/)) {
-        const resolved = await dnsPromises.lookup(host, { family: 4 });
-        if (resolved && resolved.address) {
-          parsed.hostname = resolved.address;
-          connString = parsed.toString();
-          if (needsSsl) {
-            sslOption = {
-              rejectUnauthorized: false,
-              servername: host
-            };
-          }
-          console.log(`Pre-resolved DB hostname '${host}' to IPv4 address '${resolved.address}'`);
-        }
-      }
-    } catch (err) {
-      console.warn("Could not pre-resolve DB host to IPv4:", err.message);
-    }
-  }
-
-  poolInstance = new Pool({
-    connectionString: connString,
-    ssl: sslOption,
-    connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 30000,
-    keepAlive: true
-  });
-
-  return poolInstance;
-}
+const pool = new Pool({
+  connectionString: databaseUrl,
+  ssl: needsSsl ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 15000,
+  idleTimeoutMillis: 30000,
+  keepAlive: true
+});
 
 async function query(sql, params = []) {
-  const p = await getPool();
-  return p.query(sql, params);
+  return pool.query(sql, params);
 }
 
 async function run(sql, params = []) {
@@ -86,7 +48,7 @@ async function all(sql, params = []) {
 
 async function initDb() {
   // Retry database connection to allow sleeping Neon DB to wake up cleanly
-  let retries = 10;
+  let retries = 5;
   while (retries > 0) {
     try {
       await query("SELECT 1");
@@ -96,7 +58,8 @@ async function initDb() {
       retries -= 1;
       console.warn(`Database connection waiting... (${retries} retries left). Message: ${err.message}`);
       if (retries === 0) {
-        throw new Error("Could not connect to database after multiple attempts: " + err.message);
+        console.error("Warning: Could not connect to database on startup. Server will retry on next request.");
+        return;
       }
       await new Promise(resolve => setTimeout(resolve, 3000));
     }
@@ -269,8 +232,7 @@ async function ensureColumn(table, column, definition) {
 }
 
 async function transaction(callback) {
-  const p = await getPool();
-  const client = await p.connect();
+  const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const helpers = {
@@ -299,7 +261,7 @@ async function transaction(callback) {
 }
 
 module.exports = {
-  getPool,
+  pool,
   run,
   get,
   all,
