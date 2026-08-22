@@ -734,6 +734,302 @@ app.get("/exports/:format", auth(["admin"]), async (req, res, next) => {
   }
 });
 
+app.get("/backup/export", auth(), async (req, res, next) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "Vedha Mobile Billing System";
+    workbook.created = new Date();
+
+    // Sheet 1: Products
+    const productsSheet = workbook.addWorksheet("Products");
+    productsSheet.columns = [
+      { header: "ID", key: "id", width: 10 },
+      { header: "Name", key: "name", width: 30 },
+      { header: "Category", key: "category", width: 20 },
+      { header: "Category ID", key: "category_id", width: 15 },
+      { header: "Price", key: "price", width: 15 },
+      { header: "Stock", key: "stock", width: 12 },
+      { header: "Low Stock Threshold", key: "low_stock_threshold", width: 20 },
+      { header: "Location", key: "location", width: 20 },
+      { header: "Barcode", key: "barcode", width: 20 },
+      { header: "Active", key: "active", width: 10 }
+    ];
+    const products = await all("SELECT * FROM products ORDER BY id ASC");
+    productsSheet.addRows(products);
+
+    // Sheet 2: Categories
+    const categoriesSheet = workbook.addWorksheet("Categories");
+    categoriesSheet.columns = [
+      { header: "ID", key: "id", width: 10 },
+      { header: "Name", key: "name", width: 30 },
+      { header: "Parent ID", key: "parent_id", width: 15 }
+    ];
+    const categories = await all("SELECT * FROM categories ORDER BY id ASC");
+    categoriesSheet.addRows(categories);
+
+    // Sheet 3: Sales
+    const salesSheet = workbook.addWorksheet("Sales");
+    salesSheet.columns = [
+      { header: "ID", key: "id", width: 10 },
+      { header: "Bill Number", key: "bill_number", width: 15 },
+      { header: "Customer", key: "customer", width: 25 },
+      { header: "Phone", key: "phone", width: 18 },
+      { header: "Address", key: "address", width: 30 },
+      { header: "GST Number", key: "gst_number", width: 20 },
+      { header: "Subtotal", key: "subtotal", width: 15 },
+      { header: "Tax", key: "tax", width: 15 },
+      { header: "Total", key: "total", width: 15 },
+      { header: "Payment Method", key: "payment_method", width: 18 },
+      { header: "Tax Mode", key: "tax_mode", width: 15 },
+      { header: "Created By", key: "created_by", width: 12 },
+      { header: "Created At", key: "created_at", width: 25 }
+    ];
+    const sales = await all("SELECT * FROM sales ORDER BY id ASC");
+    salesSheet.addRows(sales);
+
+    // Sheet 4: Sale Items
+    const itemsSheet = workbook.addWorksheet("Sale_Items");
+    itemsSheet.columns = [
+      { header: "ID", key: "id", width: 10 },
+      { header: "Sale ID", key: "sale_id", width: 12 },
+      { header: "Product ID", key: "product_id", width: 12 },
+      { header: "Name", key: "name", width: 30 },
+      { header: "Qty", key: "qty", width: 10 },
+      { header: "Price", key: "price", width: 15 },
+      { header: "Line Total", key: "line_total", width: 15 },
+      { header: "Description", key: "description", width: 30 },
+      { header: "CGST", key: "cgst", width: 12 },
+      { header: "SGST", key: "sgst", width: 12 },
+      { header: "Discount", key: "discount", width: 12 }
+    ];
+    const items = await all("SELECT * FROM sale_items ORDER BY id ASC");
+    itemsSheet.addRows(items);
+
+    // Sheet 5: Expenses
+    const expensesSheet = workbook.addWorksheet("Expenses");
+    expensesSheet.columns = [
+      { header: "ID", key: "id", width: 10 },
+      { header: "Description", key: "description", width: 30 },
+      { header: "Category", key: "category", width: 20 },
+      { header: "Amount", key: "amount", width: 15 },
+      { header: "Expense Date", key: "expense_date", width: 18 },
+      { header: "Created By", key: "created_by", width: 12 },
+      { header: "Created At", key: "created_at", width: 25 }
+    ];
+    const expenses = await all("SELECT * FROM expenses ORDER BY id ASC");
+    expensesSheet.addRows(expenses);
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="Vedha_Billing_Backup_${todayStr}.xlsx"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/backup/import", auth(["admin"]), async (req, res, next) => {
+  try {
+    const { fileData } = req.body;
+    if (!fileData) {
+      return res.status(400).json({ error: "No backup file data provided" });
+    }
+
+    const buffer = Buffer.from(fileData, "base64");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+
+    let restoredStats = { categories: 0, products: 0, sales: 0, sale_items: 0, expenses: 0 };
+
+    await transaction(async (tx) => {
+      // 1. Categories Sheet
+      const catSheet = workbook.getWorksheet("Categories");
+      if (catSheet) {
+        catSheet.eachRow({ includeHeader: false }, async (row, rowNumber) => {
+          if (rowNumber === 1) return;
+          const id = row.getCell(1).value;
+          const name = row.getCell(2).value;
+          const parent_id = row.getCell(3).value;
+          if (name) {
+            await tx.run(
+              `INSERT INTO categories (id, name, parent_id)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, parent_id = EXCLUDED.parent_id`,
+              [id, name, parent_id || null]
+            );
+            restoredStats.categories += 1;
+          }
+        });
+      }
+
+      // 2. Products Sheet
+      const prodSheet = workbook.getWorksheet("Products");
+      if (prodSheet) {
+        prodSheet.eachRow({ includeHeader: false }, async (row, rowNumber) => {
+          if (rowNumber === 1) return;
+          const id = row.getCell(1).value;
+          const name = row.getCell(2).value;
+          const category = row.getCell(3).value || "General";
+          const category_id = row.getCell(4).value;
+          const price = Number(row.getCell(5).value || 0);
+          const stock = Number(row.getCell(6).value || 0);
+          const low_stock_threshold = Number(row.getCell(7).value || 5);
+          const location = row.getCell(8).value || "";
+          const barcode = row.getCell(9).value || null;
+          const active = row.getCell(10).value !== false;
+
+          if (name) {
+            await tx.run(
+              `INSERT INTO products (id, name, category, category_id, price, stock, low_stock_threshold, location, barcode, active)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+               ON CONFLICT (id) DO UPDATE SET
+                 name = EXCLUDED.name,
+                 category = EXCLUDED.category,
+                 category_id = EXCLUDED.category_id,
+                 price = EXCLUDED.price,
+                 stock = EXCLUDED.stock,
+                 low_stock_threshold = EXCLUDED.low_stock_threshold,
+                 location = EXCLUDED.location,
+                 barcode = EXCLUDED.barcode,
+                 active = EXCLUDED.active`,
+              [id, name, category, category_id || null, price, stock, low_stock_threshold, location, barcode, active]
+            );
+            restoredStats.products += 1;
+          }
+        });
+      }
+
+      // 3. Sales Sheet
+      const salesSheet = workbook.getWorksheet("Sales");
+      if (salesSheet) {
+        salesSheet.eachRow({ includeHeader: false }, async (row, rowNumber) => {
+          if (rowNumber === 1) return;
+          const id = row.getCell(1).value;
+          const bill_number = row.getCell(2).value;
+          const customer = row.getCell(3).value || "";
+          const phone = row.getCell(4).value || "";
+          const address = row.getCell(5).value || "";
+          const gst_number = row.getCell(6).value || "";
+          const subtotal = Number(row.getCell(7).value || 0);
+          const tax = Number(row.getCell(8).value || 0);
+          const total = Number(row.getCell(9).value || 0);
+          const payment_method = row.getCell(10).value || "cash";
+          const tax_mode = row.getCell(11).value || "exclusive";
+          const created_by = row.getCell(12).value || req.user.id;
+          const created_at = row.getCell(13).value ? new Date(row.getCell(13).value) : new Date();
+
+          if (id) {
+            await tx.run(
+              `INSERT INTO sales (id, bill_number, customer, phone, address, gst_number, subtotal, tax, total, payment_method, tax_mode, created_by, created_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+               ON CONFLICT (id) DO UPDATE SET
+                 bill_number = EXCLUDED.bill_number,
+                 customer = EXCLUDED.customer,
+                 phone = EXCLUDED.phone,
+                 address = EXCLUDED.address,
+                 gst_number = EXCLUDED.gst_number,
+                 subtotal = EXCLUDED.subtotal,
+                 tax = EXCLUDED.tax,
+                 total = EXCLUDED.total,
+                 payment_method = EXCLUDED.payment_method,
+                 tax_mode = EXCLUDED.tax_mode,
+                 created_at = EXCLUDED.created_at`,
+              [id, bill_number, customer, phone, address, gst_number, subtotal, tax, total, payment_method, tax_mode, created_by, created_at]
+            );
+            restoredStats.sales += 1;
+          }
+        });
+      }
+
+      // 4. Sale Items Sheet
+      const itemsSheet = workbook.getWorksheet("Sale_Items");
+      if (itemsSheet) {
+        itemsSheet.eachRow({ includeHeader: false }, async (row, rowNumber) => {
+          if (rowNumber === 1) return;
+          const id = row.getCell(1).value;
+          const sale_id = row.getCell(2).value;
+          const product_id = row.getCell(3).value || null;
+          const name = row.getCell(4).value || "";
+          const qty = Number(row.getCell(5).value || 1);
+          const price = Number(row.getCell(6).value || 0);
+          const line_total = Number(row.getCell(7).value || 0);
+          const description = row.getCell(8).value || null;
+          const cgst = row.getCell(9).value ? Number(row.getCell(9).value) : null;
+          const sgst = row.getCell(10).value ? Number(row.getCell(10).value) : null;
+          const discount = Number(row.getCell(11).value || 0);
+
+          if (id && sale_id) {
+            await tx.run(
+              `INSERT INTO sale_items (id, sale_id, product_id, name, qty, price, line_total, description, cgst, sgst, discount)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+               ON CONFLICT (id) DO UPDATE SET
+                 sale_id = EXCLUDED.sale_id,
+                 product_id = EXCLUDED.product_id,
+                 name = EXCLUDED.name,
+                 qty = EXCLUDED.qty,
+                 price = EXCLUDED.price,
+                 line_total = EXCLUDED.line_total,
+                 description = EXCLUDED.description,
+                 cgst = EXCLUDED.cgst,
+                 sgst = EXCLUDED.sgst,
+                 discount = EXCLUDED.discount`,
+              [id, sale_id, product_id, name, qty, price, line_total, description, cgst, sgst, discount]
+            );
+            restoredStats.sale_items += 1;
+          }
+        });
+      }
+
+      // 5. Expenses Sheet
+      const expSheet = workbook.getWorksheet("Expenses");
+      if (expSheet) {
+        expSheet.eachRow({ includeHeader: false }, async (row, rowNumber) => {
+          if (rowNumber === 1) return;
+          const id = row.getCell(1).value;
+          const description = row.getCell(2).value || "";
+          const category = row.getCell(3).value || "General";
+          const amount = Number(row.getCell(4).value || 0);
+          const expense_date = row.getCell(5).value ? new Date(row.getCell(5).value) : new Date();
+          const created_by = row.getCell(6).value || req.user.id;
+          const created_at = row.getCell(7).value ? new Date(row.getCell(7).value) : new Date();
+
+          if (id && description) {
+            await tx.run(
+              `INSERT INTO expenses (id, description, category, amount, expense_date, created_by, created_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               ON CONFLICT (id) DO UPDATE SET
+                 description = EXCLUDED.description,
+                 category = EXCLUDED.category,
+                 amount = EXCLUDED.amount,
+                 expense_date = EXCLUDED.expense_date,
+                 created_at = EXCLUDED.created_at`,
+              [id, description, category, amount, expense_date, created_by, created_at]
+            );
+            restoredStats.expenses += 1;
+          }
+        });
+      }
+
+      // Sync sequences in PostgreSQL after manual ID insertions
+      try {
+        await tx.run("SELECT setval('categories_id_seq', (SELECT COALESCE(MAX(id), 1) FROM categories))");
+        await tx.run("SELECT setval('products_id_seq', (SELECT COALESCE(MAX(id), 1) FROM products))");
+        await tx.run("SELECT setval('sales_id_seq', (SELECT COALESCE(MAX(id), 1) FROM sales))");
+        await tx.run("SELECT setval('sale_items_id_seq', (SELECT COALESCE(MAX(id), 1) FROM sale_items))");
+        await tx.run("SELECT setval('expenses_id_seq', (SELECT COALESCE(MAX(id), 1) FROM expenses))");
+      } catch (seqErr) {
+        console.warn("Sequence sync warning:", seqErr.message);
+      }
+    });
+
+    res.json({ success: true, restored: restoredStats });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/dashboard", auth(), async (req, res, next) => {
   try {
     const today = new Date().toISOString().slice(0, 10);

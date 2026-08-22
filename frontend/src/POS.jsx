@@ -27,6 +27,7 @@ import {
   TabletSmartphone,
   Tags,
   Trash2,
+  Upload,
   UserCog,
   WalletCards,
   Wrench
@@ -181,6 +182,71 @@ export default function POS({ session, onLogout }) {
   useEffect(() => {
     loadData().catch((error) => setMessage(error.response?.data?.error || "Could not load POS data"));
   }, []);
+
+  const [showBackupReminder, setShowBackupReminder] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+
+  useEffect(() => {
+    const lastBackup = localStorage.getItem("last_excel_backup_time");
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+    if (!lastBackup || (Date.now() - Number(lastBackup)) >= TWELVE_HOURS) {
+      setShowBackupReminder(true);
+    }
+  }, []);
+
+  async function handleDownloadBackup() {
+    setBackingUp(true);
+    try {
+      const res = await api.get("/backup/export", { responseType: "blob" });
+      const blob = new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const todayStr = new Date().toISOString().slice(0, 10);
+      a.download = `Vedha_Billing_Backup_${todayStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      localStorage.setItem("last_excel_backup_time", Date.now().toString());
+      setShowBackupReminder(false);
+      setMessage("📥 Complete Excel backup saved to your PC downloads!");
+    } catch (e) {
+      alert("Failed to export Excel backup.");
+    } finally {
+      setBackingUp(false);
+    }
+  }
+
+  async function handleRestoreBackup(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!confirm(`Restore database from '${file.name}'? This will merge and restore all products, customers, and sales records.`)) return;
+
+    setRestoring(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const base64Data = evt.target.result.split(",")[1] || evt.target.result;
+          const res = await api.post("/backup/import", { fileData: base64Data });
+          const r = res.data.restored;
+          alert(`🎉 Backup Restored Successfully!\n- Products: ${r.products}\n- Sales: ${r.sales}\n- Categories: ${r.categories}\n- Expenses: ${r.expenses}`);
+          loadData();
+        } catch (err) {
+          alert(err.response?.data?.error || "Could not restore backup file.");
+        } finally {
+          setRestoring(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (e) {
+      alert("Failed to read file.");
+      setRestoring(false);
+    }
+  }
 
   // Autofill customer details by phone (Triggered on Enter key)
   async function searchCustomerByPhone(phoneNumber) {
@@ -484,12 +550,96 @@ export default function POS({ session, onLogout }) {
       </aside>
 
       <section className="workspace">
+        {/* 12-Hour Backup Reminder Notification Banner */}
+        {showBackupReminder && (
+          <div style={{
+            background: "linear-gradient(90deg, #1e293b 0%, #0f172a 100%)",
+            color: "#e2e8f0",
+            padding: "10px 16px",
+            borderBottom: "2px solid #38bdf8",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            animation: "fadeIn 0.3s ease",
+            zIndex: 100
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "18px" }}>⏰</span>
+              <div>
+                <strong style={{ color: "#38bdf8", fontSize: "13px" }}>Daily Backup Reminder:</strong>
+                <span style={{ fontSize: "12px", color: "#cbd5e1", marginLeft: "6px" }}>
+                  It's been 12+ hours since your last Excel backup. Save your database to your PC to keep your sales 100% safe!
+                </span>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button
+                onClick={handleDownloadBackup}
+                disabled={backingUp}
+                style={{
+                  background: "#0284c7",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  padding: "6px 14px",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <Download size={14} />
+                {backingUp ? "Downloading..." : "Download Backup Now (Excel)"}
+              </button>
+              <button
+                onClick={() => setShowBackupReminder(false)}
+                style={{
+                  background: "transparent",
+                  color: "#94a3b8",
+                  border: "1px solid #475569",
+                  borderRadius: "4px",
+                  padding: "6px 10px",
+                  fontSize: "12px",
+                  cursor: "pointer"
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         <header className="topbar">
           <div>
             <strong>{activeView === "pos" ? "Billing Counter" : activeView}</strong>
             <span>{session.user.username} - {session.user.role}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={handleDownloadBackup}
+              disabled={backingUp}
+              className="topbar-refresh-btn"
+              style={{ padding: "5px 12px", fontSize: "12px", background: "#0284c7", color: "#fff", display: "flex", alignItems: "center", gap: "6px", border: "none", borderRadius: "4px", fontWeight: "600", cursor: "pointer" }}
+              title="Download 1-Click Excel Backup to PC"
+            >
+              <Download size={14} />
+              {backingUp ? "Backing up..." : "Backup Excel"}
+            </button>
+
+            {isAdmin && (
+              <label
+                style={{ padding: "5px 12px", fontSize: "12px", background: "#334155", color: "#38bdf8", border: "1px solid #0284c7", borderRadius: "4px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}
+                title="Restore Database from Excel Backup File"
+              >
+                <Upload size={14} />
+                {restoring ? "Restoring..." : "Restore Excel"}
+                <input type="file" accept=".xlsx" onChange={handleRestoreBackup} style={{ display: "none" }} disabled={restoring} />
+              </label>
+            )}
+
             <div className="status-pill">
               Sales Today: {todaySalesCount} &nbsp;|&nbsp; Products: {activeProductsCount}
             </div>
