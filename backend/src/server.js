@@ -498,12 +498,13 @@ app.patch("/sales/:id", auth(), async (req, res, next) => {
     const address = req.body.address !== undefined ? req.body.address.trim() : current.address;
     const gstNumber = req.body.gstNumber !== undefined ? req.body.gstNumber.trim() : (req.body.gst_number !== undefined ? req.body.gst_number.trim() : current.gst_number);
     const paymentMethod = req.body.paymentMethod !== undefined ? req.body.paymentMethod : (req.body.payment_method !== undefined ? req.body.payment_method : current.payment_method);
+    const createdAt = (req.body.created_at || req.body.createdAt || req.body.date) ? new Date(req.body.created_at || req.body.createdAt || req.body.date) : current.created_at;
 
     await run(
       `UPDATE sales
-       SET customer = $1, phone = $2, address = $3, gst_number = $4, payment_method = $5
-       WHERE id = $6`,
-      [customer, phone, address, gstNumber, paymentMethod, saleId]
+       SET customer = $1, phone = $2, address = $3, gst_number = $4, payment_method = $5, created_at = $6
+       WHERE id = $7`,
+      [customer, phone, address, gstNumber, paymentMethod, createdAt, saleId]
     );
 
     if (Array.isArray(req.body.items)) {

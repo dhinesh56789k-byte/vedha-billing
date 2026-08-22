@@ -1745,6 +1745,14 @@ function Customers({ onReprint, onViewPng, paper, setPaper, isAdmin }) {
     }
   }
 
+  function toDatetimeInput(isoStr) {
+    if (!isoStr) return "";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "";
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   function openEditModal(sale) {
     setEditingSale({
       ...sale,
@@ -1753,6 +1761,7 @@ function Customers({ onReprint, onViewPng, paper, setPaper, isAdmin }) {
       address: sale.address || "",
       gst_number: sale.gst_number || "",
       payment_method: sale.payment_method || "cash",
+      created_at: toDatetimeInput(sale.created_at),
       items: (sale.items || []).map(it => ({ ...it }))
     });
   }
@@ -1767,6 +1776,7 @@ function Customers({ onReprint, onViewPng, paper, setPaper, isAdmin }) {
         address: editingSale.address,
         gst_number: editingSale.gst_number,
         payment_method: editingSale.payment_method,
+        created_at: editingSale.created_at,
         items: editingSale.items
       });
 
@@ -2009,7 +2019,16 @@ function Customers({ onReprint, onViewPng, paper, setPaper, isAdmin }) {
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: setPaper ? "1.2fr 1fr 1fr 1fr" : "1.2fr 1fr 1fr", gap: "10px" }}>
+                <div>
+                  <label style={{ fontSize: "11px", color: "#38bdf8", fontWeight: "700", display: "block", marginBottom: "4px" }}>📅 Bill Date & Time:</label>
+                  <input
+                    type="datetime-local"
+                    value={editingSale.created_at || ""}
+                    onChange={e => setEditingSale({ ...editingSale, created_at: e.target.value })}
+                    style={{ width: "100%", background: "#fff", color: "#0f172a", borderRadius: "4px", padding: "6px 8px", border: "1px solid #cbd5e1", fontSize: "12px", fontWeight: "600" }}
+                  />
+                </div>
                 <div>
                   <label style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", display: "block", marginBottom: "4px" }}>GST Number:</label>
                   <input
